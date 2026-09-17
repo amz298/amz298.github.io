@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>亚马逊德语 Listing 文案提取器</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f0f7f2; --panel:#ffffff; --panel2:#f4faf6; --panel3:#e8f2ec;
+    --line:#c9ddd1; --line2:#a8c8b5;
+    --txt:#1e3328; --muted:#4f6b5b; --faint:#7fa08f;
+    --accent:#2d8659; --accent-light:#3da06e; --accent-soft:#d6f0e2;
+    --orange:#e07b2b; --orange-soft:#fde8d0;
+    --purple:#6d4ab0; --purple-soft:#e8deff;
+    --red:#d64545;
+    --shadow:0 8px 28px rgba(30,60,45,.08);
+    --shadow-sm:0 2px 6px rgba(30,60,45,.05);
+    --r:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--txt); background:var(--bg); line-height:1.6;
+    background-image:
+      radial-gradient(rgba(45,134,89,.035) 1px, transparent 1.5px),
+      radial-gradient(800px 360px at 90% -10%, rgba(45,134,89,.10), transparent 60%);
+    background-size:26px 26px, 100% 100%;
+    min-height:100vh;
+  }
+  nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(10px);
+    background:rgba(240,247,242,.92); border-bottom:1px solid var(--line);
+    padding:10px 24px;}
+  .nav-inner{max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+  .logo{display:flex; align-items:center; gap:9px; font-weight:800; font-size:15px; color:var(--accent);}
+  .logo .ic{width:30px;height:30px;border-radius:9px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-light));
+    display:grid;place-items:center;color:#fff;font-size:15px;
+    box-shadow:0 3px 8px rgba(45,134,89,.3);}
+  .nav-actions{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{padding:7px 14px; border-radius:8px; border:1px solid var(--line);
+    background:#fff; color:var(--txt); font-size:12.5px; font-weight:600; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px; transition:.15s; white-space:nowrap;}
+  .btn:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-light)); color:#fff; border-color:transparent;}
+  .btn.primary:hover{filter:brightness(1.05); color:#fff;}
+  .btn.orange{background:linear-gradient(135deg,#e07b2b,#f09546); color:#fff; border-color:transparent;}
+  .btn.orange:hover{filter:brightness(1.05); color:#fff;}
+  .btn.ghost{background:transparent; border-color:transparent; color:var(--muted);}
+  .btn.ghost:hover{color:var(--accent); background:var(--accent-soft);}
+
+  main{max-width:1100px; margin:0 auto; padding:22px 24px 50px;}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--r);
+    box-shadow:var(--shadow-sm); overflow:hidden; margin-bottom:16px;}
+  .card .ch{padding:14px 18px 0; display:flex; align-items:center; gap:9px;}
+  .card .ch h3{font-size:14px; font-weight:700; color:var(--accent);}
+  .card .ch .tag{font-size:11px; color:var(--faint); padding:2px 8px; border-radius:99px;
+    background:var(--panel2); border:1px solid var(--line); margin-left:auto; font-weight:600;}
+  .card .cb{padding:14px 18px 18px;}
+
+  /* 上传区 */
+  .upload-zone{border:2px dashed var(--line2); border-radius:12px; padding:32px 24px;
+    text-align:center; background:var(--panel2); cursor:pointer; transition:.15s;}
+  .upload-zone:hover{border-color:var(--accent); background:var(--accent-soft); transform:translateY(-1px);}
+  .upload-zone .big{font-size:42px; margin-bottom:8px;}
+  .upload-zone .t1{font-size:15px; font-weight:700; color:var(--accent);}
+  .upload-zone .t2{font-size:12px; color:var(--muted); margin-top:4px;}
+  .upload-zone.dragover{border-color:var(--accent); background:var(--accent-soft);}
+
+  /* 文件信息 */
+  .file-info{display:flex; gap:10px; align-items:center; padding:10px 14px;
+    background:var(--accent-soft); border:1px solid var(--line); border-radius:8px;
+    margin-bottom:14px; font-size:13px;}
+  .file-info .fname{font-weight:700; color:var(--accent);}
+  .file-info .spacer{flex:1;}
+  .file-info .mini{font-size:11px; color:var(--muted);}
+
+  /* 结果卡片 */
+  .result-card{background:#fff; border:1px solid var(--line); border-radius:10px;
+    padding:14px 16px; margin-bottom:12px; transition:.15s;}
+  .result-card:hover{box-shadow:var(--shadow); border-color:var(--line2);}
+  .result-card .head{display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;}
+  .result-card .head h4{font-size:13.5px; font-weight:700; color:var(--accent);}
+  .result-card .head .row-tag{font-size:10.5px; color:var(--faint); padding:1px 7px;
+    background:var(--panel2); border:1px solid var(--line); border-radius:99px; font-weight:600;}
+  .result-card .head .count{font-size:11px; color:var(--faint); margin-left:auto; font-weight:600;}
+  .result-card .head .count.warn{color:var(--orange);}
+  .result-card .head .count.bad{color:var(--red);}
+  .result-card .head .count.good{color:var(--accent);}
+  .result-card .body{font-size:13.5px; line-height:1.7; color:var(--txt);
+    background:var(--panel2); border-radius:8px; padding:12px 14px;
+    border:1px solid var(--line); cursor:text; white-space:pre-wrap;}
+  .result-card .body:focus{outline:2px solid var(--accent); background:#fff; outline-offset:0;}
+
+  .copybar{display:flex; gap:6px; margin-top:9px; flex-wrap:wrap;}
+  .mini-btn{padding:5px 11px; font-size:11.5px; border-radius:6px;
+    border:1px solid var(--line); background:#fff; color:var(--muted);
+    cursor:pointer; font-weight:600; transition:.15s;}
+  .mini-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .mini-btn.primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .mini-btn.primary:hover{filter:brightness(1.08);}
+
+  /* 五点列表 */
+  .bullet-list{display:flex; flex-direction:column; gap:10px;}
+  .bullet-item{display:flex; gap:10px; align-items:flex-start;}
+  .bullet-item .bnum{width:26px; height:26px; border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),var(--accent-light));
+    color:#fff; display:grid; place-items:center; font-size:11.5px; font-weight:800;
+    flex-shrink:0; margin-top:8px; box-shadow:0 2px 5px rgba(45,134,89,.25);}
+  .bullet-item .bbody{flex:1; background:var(--panel2); border:1px solid var(--line);
+    border-radius:8px; padding:10px 12px; font-size:13px; line-height:1.7;
+    cursor:text; white-space:pre-wrap;}
+  .bullet-item .bbody:focus{outline:2px solid var(--accent); background:#fff;}
+  .bullet-item .bcount{font-size:10.5px; color:var(--faint); margin-top:4px; text-align:right;}
+
+  /* 概览统计 */
+  .stats-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px;}
+  .stat-box{background:var(--panel2); border:1px solid var(--line); border-radius:10px;
+    padding:12px; text-align:center;}
+  .stat-box .num{font-size:20px; font-weight:800; color:var(--accent);}
+  .stat-box .lab{font-size:11.5px; color:var(--muted); margin-top:2px;}
+
+  /* 竞品链接 */
+  .competitor-list{display:flex; flex-direction:column; gap:6px;}
+  .competitor-item{display:flex; align-items:center; gap:8px; padding:7px 10px;
+    background:var(--panel2); border:1px solid var(--line); border-radius:7px; font-size:12px;}
+  .competitor-item a{color:var(--accent); text-decoration:none; font-weight:600;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;}
+  .competitor-item a:hover{text-decoration:underline;}
+  .competitor-item .site{font-size:10.5px; color:var(--faint); padding:1px 6px;
+    background:#fff; border:1px solid var(--line); border-radius:4px;}
+
+  /* Toast */
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--txt); color:#fff; padding:10px 22px; border-radius:10px; font-size:13px;
+    font-weight:600; opacity:0; pointer-events:none; transition:.25s; z-index:100;
+    box-shadow:0 10px 30px rgba(0,0,0,.2);}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* 空状态 */
+  .empty-state{text-align:center; padding:40px 20px; color:var(--muted); font-size:13px;}
+  .empty-state .big{font-size:48px; margin-bottom:10px;}
+
+  details{border:1px solid var(--line); border-radius:8px; margin-bottom:10px;
+    background:var(--panel2); overflow:hidden;}
+  details summary{padding:10px 14px; font-size:13px; font-weight:700; color:var(--accent);
+    cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px;}
+  details summary::-webkit-details-marker{display:none;}
+  details summary::before{content:'▶'; font-size:10px; color:var(--faint); transition:.15s;}
+  details[open] summary::before{transform:rotate(90deg);}
+  details .dc{padding:0 14px 14px;}
+
+  .hint{font-size:11.5px; color:var(--muted); line-height:1.6;}
+  .hint b{color:var(--accent);}
+
+  footer{text-align:center; padding:16px; color:var(--faint); font-size:11.5px;}
+
+  .tab-bar{display:flex; gap:4px; margin-bottom:14px; border-bottom:2px solid var(--line);}
+  .tab-item{padding:8px 16px; font-size:13px; font-weight:600; color:var(--muted);
+    cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition:.15s;}
+  .tab-item:hover{color:var(--accent);}
+  .tab-item.active{color:var(--accent); border-bottom-color:var(--accent);}
+
+  .kw-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .kw-item{display:flex; align-items:center; gap:8px; padding:6px 10px;
+    background:var(--panel2); border:1px solid var(--line); border-radius:6px; font-size:12px;}
+  .kw-item .kde{font-weight:700; color:var(--accent); flex:1; cursor:pointer;}
+  .kw-item .kde:hover{text-decoration:underline;}
+  .kw-item .kcn{color:var(--muted); font-size:11px;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="logo"><div class="ic">📋</div> 德语Listing提取器</div>
+    <div class="nav-actions">
+      <label class="btn primary" style="cursor:pointer;">
+        📂 上传Excel
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;" onchange="handleFile(event)">
+      </label>
+      <button class="btn ghost" onclick="resetAll()">↺ 清空</button>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+  <!-- 上传区 -->
+  <div class="card" id="uploadCard">
+    <div class="ch"><h3>📂 上传 Excel 模板</h3><span class="tag">本地处理，不上传</span></div>
+    <div class="cb">
+      <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="big">📊</div>
+        <div class="t1">点击上传 或 拖拽 Excel 文件到这里</div>
+        <div class="t2">支持 .xlsx / .xls · 自动提取 H列德语内容 · 秒级完成</div>
+      </div>
+      <div class="hint" style="margin-top:10px;">
+        💡 自动识别「产品卖点（中文描述）模板」sheet，提取 <b>H列（第8列）</b> 的德语输出内容：
+        <b>标题、五点、产品描述、Search Terms</b>，一键复制到亚马逊后台。
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果区（默认隐藏） -->
+  <div id="resultArea" style="display:none;">
+
+    <!-- 文件信息 -->
+    <div class="file-info">
+      <span>📄</span>
+      <span class="fname" id="fileName">--</span>
+      <span class="mini" id="sheetName"></span>
+      <span class="spacer"></span>
+      <span class="mini" id="extractTime"></span>
+    </div>
+
+    <!-- 快速统计 -->
+    <div class="stats-grid">
+      <div class="stat-box"><div class="num" id="stTitleLen">--</div><div class="lab">标题字符</div></div>
+      <div class="stat-box"><div class="num" id="stSubTitleLen">--</div><div class="lab">亮点字符</div></div>
+      <div class="stat-box"><div class="num" id="stBulletCount">--</div><div class="lab">五点数量</div></div>
+      <div class="stat-box"><div class="num" id="stSTLen">--</div><div class="lab">ST字节</div></div>
+    </div>
+
+    <!-- Tab切换 -->
+    <div class="tab-bar">
+      <div class="tab-item active" data-tab="all">📋 全部</div>
+      <div class="tab-item" data-tab="bullets">⭐ 五点逐条</div>
+      <div class="tab-item" data-tab="meta">📦 产品信息</div>
+      <div class="tab-item" data-tab="kw">🔑 关键词</div>
+    </div>
+
+    <!-- Tab: 全部 -->
+    <div class="tab-pane active" id="tab-all">
+      <!-- 标题 -->
+      <div class="result-card">
+        <div class="head">
+          <h4>📌 标题 Title</h4>
+          <span class="row-tag" id="titleRow">行?</span>
+          <span class="count" id="titleCount">0 / 200</span>
+        </div>
+        <div class="body" contenteditable="true" id="outTitle" spellcheck="false"></div>
+        <div class="copybar">
+          <button class="mini-btn primary" onclick="copyText('outTitle')">📋 复制标题</button>
+          <button class="mini-btn" onclick="countChars('outTitle','titleCount',200)">字符统计</button>
+          <button class="mini-btn" onclick="checkTitle()">🔍 合规检查</button>
+        </div>
+      </div>
+
+      <!-- 亮点（副标题） -->
+      <div class="result-card" style="border-left:4px solid var(--orange);">
+        <div class="head">
+          <h4 style="color:var(--orange);">✨ 亮点 / 副标题</h4>
+          <span class="row-tag" id="subTitleRow">行?</span>
+          <span class="count" id="subTitleCount">0 / 200</span>
+        </div>
+        <div class="body" contenteditable="true" id="outSubTitle" spellcheck="false"></div>
+        <div class="copybar">
+          <button class="mini-btn primary" onclick="copyText('outSubTitle')">📋 复制亮点</button>
+          <button class="mini-btn" onclick="copyTitleBoth()">📋 标题+亮点一起复制</button>
+          <button class="mini-btn" onclick="countChars('outSubTitle','subTitleCount',200)">字符统计</button>
+        </div>
+      </div>
+
+      <!-- 五点（全文） -->
+      <div class="result-card">
+        <div class="head">
+          <h4>⭐ 五点描述 Bullet Points（全文）</h4>
+          <span class="row-tag" id="bulletRow">行?</span>
+          <span class="count" id="bulletAllCount">0 条</span>
+        </div>
+        <div class="body" contenteditable="true" id="outBullets" spellcheck="false" style="min-height:150px;"></div>
+        <div class="copybar">
+          <button class="mini-btn primary" onclick="copyText('outBullets')">📋 全部复制</button>
+          <button class="mini-btn" onclick="copyBulletsNumbered()">按编号复制</button>
+          <button class="mini-btn" onclick="copyBulletsLine()">逐行复制</button>
+        </div>
+      </div>
+
+      <!-- 描述 -->
+      <div class="result-card">
+        <div class="head">
+          <h4>📖 产品描述 Description</h4>
+          <span class="row-tag" id="descRow">行?</span>
+          <span class="count" id="descCount">0 字符</span>
+        </div>
+        <div class="body" contenteditable="true" id="outDesc" spellcheck="false" style="min-height:140px;"></div>
+        <div class="copybar">
+          <button class="mini-btn primary" onclick="copyText('outDesc')">📋 复制描述</button>
+          <button class="mini-btn" onclick="copyDescPlain()">纯文本</button>
+          <button class="mini-btn" onclick="copyDescHTML()">HTML格式</button>
+        </div>
+      </div>
+
+      <!-- Search Terms -->
+      <div class="result-card">
+        <div class="head">
+          <h4>🔍 后台搜索词 Search Terms</h4>
+          <span class="row-tag" id="stRow">行?</span>
+          <span class="count" id="stCount">0 / 250 字节</span>
+        </div>
+        <div class="body" contenteditable="true" id="outST" spellcheck="false" style="font-size:12.5px;"></div>
+        <div class="copybar">
+          <button class="mini-btn primary" onclick="copyText('outST')">📋 复制ST</button>
+          <button class="mini-btn" onclick="countBytes('outST','stCount',250)">字节统计</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: 五点逐条 -->
+    <div class="tab-pane" id="tab-bullets">
+      <div class="card">
+        <div class="ch"><h3>⭐ 五点逐条（点击可编辑）</h3><span class="tag">逐条复制</span></div>
+        <div class="cb">
+          <div class="bullet-list" id="bulletList"></div>
+          <div class="copybar" style="margin-top:12px;">
+            <button class="mini-btn primary" onclick="copyAllBullets()">📋 复制全部五点</button>
+            <button class="mini-btn" onclick="copyBulletsForAmazon()">📦 后台格式</button>
+          </div>
+          <div class="hint" style="margin-top:8px;">
+            💡 每条五点可独立编辑。点击「复制」按钮复制单条，或使用顶部按钮批量复制。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: 产品信息 -->
+    <div class="tab-pane" id="tab-meta">
+
+      <!-- 产品名片 -->
+      <div class="card" style="background:linear-gradient(135deg, var(--accent-soft), #fff);">
+        <div class="cb" style="padding:18px;">
+          <div style="display:flex; gap:14px; align-items:flex-start;">
+            <div style="font-size:48px;">🏷️</div>
+            <div style="flex:1;">
+              <div style="font-size:16px; font-weight:800; color:var(--accent); margin-bottom:4px;" id="metaName">--</div>
+              <div style="font-size:12.5px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap;">
+                <span>SKU: <b id="metaSku">--</b></span>
+                <span>ASIN: <b id="metaAsin">--</b></span>
+                <span>品类: <b id="metaCategory">--</b></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 核心规格 -->
+      <div class="card">
+        <div class="ch"><h3>📏 核心规格参数</h3><span class="tag">自动提取</span></div>
+        <div class="cb">
+          <div id="specGrid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"></div>
+        </div>
+      </div>
+
+      <!-- 详细信息 -->
+      <div class="card">
+        <div class="ch"><h3>📋 产品详细信息</h3><span class="tag" id="infoCount">0项</span></div>
+        <div class="cb">
+          <div id="productInfo" style="display:flex; flex-direction:column; gap:1px;
+            border:1px solid var(--line); border-radius:8px; overflow:hidden;">
+          </div>
+          <div class="hint" style="margin-top:10px;">
+            💡 从表格左侧A列的字段名自动提取，点击值可复制。
+          </div>
+        </div>
+      </div>
+
+      <!-- 产品清单 -->
+      <div class="card" id="packingCard" style="display:none;">
+        <div class="ch"><h3>📦 产品清单 / 包装内容</h3></div>
+        <div class="cb">
+          <div id="packingList" style="background:var(--panel2); border:1px solid var(--line);
+            border-radius:8px; padding:12px 16px; font-size:13px; white-space:pre-wrap;"></div>
+        </div>
+      </div>
+
+      <!-- 竞品链接 -->
+      <div class="card">
+        <div class="ch"><h3>🔗 竞品链接</h3><span class="tag" id="compCount">0个</span></div>
+        <div class="cb">
+          <div class="competitor-list" id="compList"></div>
+          <div class="hint" style="margin-top:8px;">
+            💡 从A列自动提取亚马逊和1688竞品链接，点击可直接打开。
+          </div>
+        </div>
+      </div>
+
+      <details>
+        <summary>📊 完整Sheet数据预览（A列+H列）</summary>
+        <div class="dc">
+          <div style="max-height:400px;overflow:auto;border:1px solid var(--line);border-radius:6px;">
+            <table id="fullTable" style="width:100%;font-size:11.5px;border-collapse:collapse;">
+            </table>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- Tab: 关键词 -->
+    <div class="tab-pane" id="tab-kw">
+      <div class="card">
+        <div class="ch"><h3>🔑 关键词提取</h3><span class="tag" id="kwCountTag">0个</span></div>
+        <div class="cb">
+          <div style="margin-bottom:10px;">
+            <input type="text" id="kwFilter" placeholder="🔍 搜索关键词..."
+              style="width:100%; padding:8px 12px; border:1px solid var(--line); border-radius:8px;
+              background:var(--panel2); font-size:13px;"
+              oninput="filterKW()">
+          </div>
+          <div class="kw-grid" id="kwGrid"></div>
+          <div class="hint" style="margin-top:10px;">
+            💡 从「关键词」sheet 自动提取。点击德语词可复制到剪贴板。
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card" id="emptyCard" style="display:none;">
+    <div class="cb">
+      <div class="empty-state">
+        <div class="big">📂</div>
+        <div>请先上传 Excel 文件</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>德语Listing文案提取器 · 纯本地运行 · 数据不上传服务器</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ========== 工具函数 ==========
+  const $ = id => document.getElementById(id);
+  const toast = (msg) => {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => t.classList.remove('show'), 1800);
+  };
+
+  // Tab切换
+  document.querySelectorAll('.tab-item').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab-item').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      $('tab-'+t.dataset.tab).classList.add('active');
+    });
+  });
+  // 初始化tab pane样式
+  const style = document.createElement('style');
+  style.textContent = '.tab-pane{display:none;} .tab-pane.active{display:block;}';
+  document.head.appendChild(style);
+
+  // ========== 拖拽上传 ==========
+  const dz = $('dropZone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if(file) processFile(file);
+  });
+
+  function handleFile(event){
+    const file = event.target.files[0];
+    if(file) processFile(file);
+    event.target.value = '';
+  }
+
+  // ========== 核心：读取并解析Excel ==========
+  let currentData = null; // 保存解析结果
+
+  function processFile(file){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        const t0 = performance.now();
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, {type:'array'});
+        const result = parseWorkbook(wb);
+        const t1 = performance.now();
+
+        currentData = result;
+
+        // 显示结果
+        $('fileName').textContent = file.name;
+        $('sheetName').textContent = '卖点Sheet: ' + (result.sellSheetName || '未识别');
+        $('extractTime').textContent = '耗时 ' + Math.round(t1-t0) + 'ms';
+
+        renderResult(result);
+        $('uploadCard').style.display = 'none';
+        $('resultArea').style.display = 'block';
+        $('emptyCard').style.display = 'none';
+
+        toast('提取成功！共 ' + result.bullets.length + ' 条五点 ✓');
+      }catch(err){
+        console.error(err);
+        toast('读取失败: ' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function parseWorkbook(wb){
+    const result = {
+      sellSheetName: null,
+      kwSheetName: null,
+      title: '',
+      titleRow: 0,
+      subTitle: '',
+      subTitleRow: 0,
+      bullets: [],        // [{text, row}]
+      bulletStartRow: 0,
+      desc: '',
+      descRow: 0,
+      st: '',
+      stRow: 0,
+      productInfo: {},    // 产品信息键值对
+      competitors: [],    // 竞品链接
+      allRows: [],        // 完整数据
+      keywords: [],       // 关键词列表
+    };
+
+    // ---- 1. 找「产品卖点」sheet ----
+    const sellSheetName = wb.SheetNames.find(n =>
+      /卖点|描述|Listing|listing/i.test(n)
+    );
+    if(sellSheetName){
+      result.sellSheetName = sellSheetName;
+      const ws = wb.Sheets[sellSheetName];
+      const arr = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+      result.allRows = arr;
+      parseSellSheet(arr, result);
+    }
+
+    // ---- 2. 找「关键词」sheet ----
+    const kwSheetName = wb.SheetNames.find(n => /关键词|keyword|Keyword|KW|kw/i.test(n));
+    if(kwSheetName){
+      result.kwSheetName = kwSheetName;
+      const ws = wb.Sheets[kwSheetName];
+      const arr = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+      result.keywords = parseKWSheet(arr);
+    } else {
+      // 没找到关键词sheet，遍历其他sheet试试
+      wb.SheetNames.forEach(name => {
+        if(name === sellSheetName) return;
+        const ws = wb.Sheets[name];
+        const arr = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+        if(arr.length > 2 && arr[0].some(h => /关键词|keyword|Suchbegriff/i.test(String(h||'')))){
+          result.kwSheetName = name;
+          result.keywords = parseKWSheet(arr);
+        }
+      });
+    }
+
+    return result;
+  }
+
+  function parseSellSheet(arr, result){
+    // H列 = 索引7
+    const H = 7;
+    // A列 = 索引0
+    const A = 0;
+
+    // ---- 提取竞品链接（A列的URL） ----
+    arr.forEach((row, i) => {
+      const aVal = String(row[A] || '').trim();
+      if(/https?:\/\//i.test(aVal)){
+        let site = '未知';
+        if(/amazon/i.test(aVal)) site = 'Amazon';
+        else if(/1688|alibaba/i.test(aVal)) site = '1688';
+        else if(/ebay/i.test(aVal)) site = 'eBay';
+        result.competitors.push({ url: aVal, site, row: i+1 });
+      }
+    });
+
+    // ---- 提取产品基础信息（A列是字段名，B-F列是值） ----
+    const infoFields = [
+      // 基本信息
+      {key:'中文名', match:['中文名','产品名','品名','名称','产品名称'], group:'basic'},
+      {key:'德语名', match:['德语名','德文名','德语产品名'], group:'basic'},
+      {key:'SKU', match:['SKU','货号','款号','编码','Model','型号'], group:'basic'},
+      {key:'ASIN', match:['ASIN','asin'], group:'basic'},
+      {key:'品牌', match:['品牌','Brand','Marke'], group:'basic'},
+      {key:'原产地', match:['产地','原产地','来源'], group:'basic'},
+      // 规格参数
+      {key:'材质', match:['材质','材料','面料','材质说明','Material'], group:'spec'},
+      {key:'尺寸', match:['尺寸','规格','大小','Product size','Abmessung'], group:'spec'},
+      {key:'颜色', match:['颜色','色系','颜色分类','Farbe','Color'], group:'spec'},
+      {key:'重量', match:['重量','净重','毛重','Gewicht','Weight'], group:'spec'},
+      {key:'容量', match:['容量','容积','Capacity'], group:'spec'},
+      {key:'数量', match:['数量','套装数量','件数','件装','Qty'], group:'spec'},
+      {key:'电压', match:['电压','Volt','Voltage'], group:'spec'},
+      {key:'功率', match:['功率','Watt','Power'], group:'spec'},
+      {key:'适用', match:['适用','适合','对象','适用范围','geeignet für'], group:'spec'},
+      // 包装/清单
+      {key:'包装清单', match:['包装清单','产品清单','配件清单','清单','包含','Packing List','Lieferumfang'], group:'packing'},
+      {key:'包装尺寸', match:['包装尺寸','外箱尺寸'], group:'packing'},
+      {key:'包装重量', match:['包装重量','装箱重量'], group:'packing'},
+      // 其他
+      {key:'主管建议', match:['主管建议','审核意见','备注'], group:'other'},
+      {key:'选品分析', match:['选品分析','卖点分析','产品分析'], group:'other'},
+      {key:'注意事项', match:['注意事项','温馨提示','警告','Hinweis'], group:'other'},
+    ];
+
+    arr.forEach((row, i) => {
+      const aVal = String(row[A] || '').trim();
+      if(!aVal) return;
+      infoFields.forEach(f => {
+        if(f.match.some(m => aVal.includes(m)) && !result.productInfo[f.key]){
+          // 找非空的值列（B到G列）
+          let val = '';
+          for(let c=1; c<7; c++){
+            if(row[c] && String(row[c]).trim()){
+              val = String(row[c]).trim();
+              break;
+            }
+          }
+          if(val) result.productInfo[f.key] = val;
+        }
+      });
+    });
+
+    // ---- 智能分段：基于H列 + A列标签定位 ----
+    // 遍历每一行，根据内容特征判断属于哪一段
+    let section = 'before_title'; // 当前段落标记
+    let bulletIndex = 0;
+    let currentBullet = '';
+    let currentDesc = '';
+    let currentST = '';
+
+    for(let r=0; r<arr.length; r++){
+      const hVal = String(arr[r][H] || '').trim();
+      const aVal = String(arr[r][A] || '').trim();
+
+      // ---- 段落切换标记（H列的短标题或A列的模块名） ----
+      if(hVal && hVal.length < 10){
+        if(/标题|title|Title|Titel/i.test(hVal)){
+          section = 'title';
+          continue;
+        }
+        if(/五点|bullet|Bullet|Key Product/i.test(hVal)){
+          section = 'bullets';
+          continue;
+        }
+        if(/描述|description|Description|Beschreibung/i.test(hVal) && !hVal.includes('五点')){
+          // 保存之前的五点
+          if(currentBullet.trim()){
+            result.bullets.push({ text: cleanText(currentBullet), row: r-bulletIndex });
+            currentBullet = '';
+          }
+          section = 'desc';
+          continue;
+        }
+        if(/^ST$|Search Term|Suchbegriff|后台关键词|搜索词/i.test(hVal)){
+          section = 'st';
+          continue;
+        }
+      }
+
+      // A列也可能是切换标记
+      if(aVal && aVal.length < 15 && !/http/.test(aVal)){
+        if(/标题|title|Title/i.test(aVal) && section === 'before_title'){
+          section = 'title';
+          continue;
+        }
+        if(/五点|bullet|Bullet/i.test(aVal) && section !== 'desc' && section !== 'st'){
+          section = 'bullets';
+          continue;
+        }
+        if(/产品描述|产品详情|^描述$|^Description$/i.test(aVal)){
+          if(currentBullet.trim()){
+            result.bullets.push({ text: cleanText(currentBullet), row: r-bulletIndex });
+            currentBullet = '';
+          }
+          section = 'desc';
+          continue;
+        }
+        if(/Search Term|ST[ $]|后台搜索词|搜索词|关键词$/.test(aVal) && section !== 'before_title'){
+          section = 'st';
+          continue;
+        }
+      }
+
+      // ---- 根据当前段落收集内容 ----
+      if(!hVal) continue;
+
+      if(section === 'title'){
+        if(!result.title && hVal.length > 10){
+          const fullText = hVal;
+          // 按换行拆分：第一行=标题，第二行=亮点
+          const lines = fullText.split(/\r?\n/).map(l=>l.trim()).filter(l=>l);
+          if(lines.length >= 2){
+            result.title = lines[0];
+            result.subTitle = lines.slice(1).join(' '); // 第二行及以后合并为亮点
+            result.titleRow = r+1;
+            result.subTitleRow = r+1;
+          } else {
+            result.title = cleanText(hVal);
+            result.titleRow = r+1;
+          }
+          section = 'waiting_bullets';
+        }
+      }
+      else if(section === 'waiting_bullets'){
+        // 空行或五点标签行跳过
+        if(/五点|bullet|Bullet/i.test(hVal)){
+          section = 'bullets';
+        }
+      }
+      else if(section === 'bullets'){
+        // 五点：按空行分隔每条，或者每行一条
+        // 策略：如果行以大写字母开头且有一定长度，视为新的一条
+        const cleaned = hVal.trim();
+        if(!cleaned){
+          // 空行 → 保存当前bullet（如果有）
+          if(currentBullet.trim() && bulletIndex < 15){
+            result.bullets.push({ text: cleanText(currentBullet), row: r-bulletIndex });
+            currentBullet = '';
+            bulletIndex = 0;
+          }
+          continue;
+        }
+        // 判断是否是新的一条（以加粗格式或关键词开头）
+        const isNewBullet = /^[A-ZÄÖÜ]/.test(cleaned) && bulletIndex < 2 &&
+                            (currentBullet.length === 0 ||
+                             // 如果当前内容很短，且新行看起来像新标题
+                             /Stabil|Ausgestattet|Kompakt|Für|Einfach|Hochwertig|Premium|Vielseitig|Perfekt|Ideali|Rutschfest|Atmungsaktiv|Wasserdicht/i.test(cleaned.split(' ')[0])
+                            );
+        if(isNewBullet && currentBullet.trim()){
+          result.bullets.push({ text: cleanText(currentBullet), row: r-bulletIndex });
+          currentBullet = cleaned;
+          bulletIndex = 1;
+        } else {
+          // 追加到当前bullet
+          currentBullet += (currentBullet ? '\n' : '') + cleaned;
+          bulletIndex++;
+        }
+      }
+      else if(section === 'desc'){
+        // 描述：累计到遇到ST为止
+        if(currentDesc.length < 5000){
+          currentDesc += (currentDesc ? '\n' : '') + hVal;
+          if(!result.descRow) result.descRow = r+1;
+        }
+      }
+      else if(section === 'st'){
+        currentST += (currentST ? ' ' : '') + hVal;
+        if(!result.stRow) result.stRow = r+1;
+      }
+    }
+
+    // 收尾：保存最后一条bullet
+    if(currentBullet.trim() && section !== 'desc'){
+      result.bullets.push({ text: cleanText(currentBullet), row: result.bullets.length });
+    }
+
+    // 如果没找到五点（bullet拆分失败），用另一种策略：从大段文本中按句号+换行拆分
+    if(result.bullets.length <= 1){
+      // 找H列中最长的文本段（可能就是五点全部）
+      let longestH = '';
+      let longestRow = 0;
+      for(let r=0; r<arr.length; r++){
+        const h = String(arr[r][H] || '');
+        if(h.length > longestH.length){
+          longestH = h;
+          longestRow = r+1;
+        }
+      }
+      if(longestH.length > 200){
+        result.bullets = splitBulletsSmart(longestH, longestRow);
+        result.bulletStartRow = longestRow;
+      }
+    }
+
+    // 计算五点起始行
+    if(result.bullets.length > 0 && !result.bulletStartRow){
+      result.bulletStartRow = result.bullets[0].row;
+    }
+
+    // 描述清理：合并多余空行
+    result.desc = cleanText(currentDesc);
+
+    // ST清理：去重空格
+    result.st = currentST.replace(/\s+/g,' ').trim();
+
+    // ---- 从描述中提取规格参数（Spezifikationen / Technische Daten）----
+    extractSpecsFromDesc(result);
+
+    // ---- 从A列多行内容里提取更多字段（比如产品名占了多行的情况）----
+    // 第一行如果是「产品卖点」之类的标题，第二行是字段名，第三行开始是内容
+    // 已经在上面的infoFields里处理了
+
+    return result;
+  }
+
+  // 从描述文本中提取规格参数
+  function extractSpecsFromDesc(result){
+    const desc = result.desc;
+    if(!desc) return;
+
+    // 匹配 Spezifikationen / Technische Daten / Lieferumfang 等段落
+    const sections = [
+      {key:'规格', pattern:/Spezifikation|Technische Daten|Produktinformation|Produktdaten/i},
+      {key:'包装清单', pattern:/Lieferumfang|Paket enthält|Im Lieferumfang|Packing List/i},
+      {key:'适用', pattern:/geeignet für|Anwendung|Verwendungszweck/i},
+    ];
+
+    // 提取 key: value 格式的行（比如 "Produktname: xxx"）
+    const lines = desc.split(/\n/).map(l=>l.trim()).filter(l=>l);
+    const specs = {};
+    lines.forEach(line => {
+      // 匹配 "Name: Wert" 或 "Name - Wert" 格式
+      const m = line.match(/^[A-ZÄÖÜ][a-zäöüß\s]+?:\s*(.+)$/);
+      if(m){
+        const key = line.split(':')[0].trim();
+        const val = m[1].trim();
+        if(val.length > 1 && val.length < 200){
+          specs[key] = val;
+        }
+      }
+    });
+
+    // 把提取到的德语规格合并到 productInfo（不覆盖已有的中文key）
+    Object.entries(specs).forEach(([k,v]) => {
+      if(!result.productInfo[k]){
+        result.productInfo[k] = v;
+      }
+    });
+  }
+
+  // 智能拆分五点
+  function splitBulletsSmart(text, startRow){
+    const bullets = [];
+    // 先按双换行拆分
+    let parts = text.split(/\n\s*\n/).map(p => p.trim()).filter(p => p);
+
+    // 如果只有1段，尝试按加粗标记拆分（特殊字体表示开头）
+    // 或按"大写开头+冒号"模式拆分
+    if(parts.length <= 1){
+      // 用正则匹配每条：以大写单词开头 + 冒号的模式
+      const pattern = /([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\s]+?:)/g;
+      const matches = [...text.matchAll(pattern)];
+      if(matches.length >= 3){
+        parts = [];
+        for(let i=0; i<matches.length; i++){
+          const start = matches[i].index;
+          const end = i+1 < matches.length ? matches[i+1].index : text.length;
+          parts.push(text.slice(start, end).trim());
+        }
+      }
+    }
+
+    // 如果还不够，按句子拆分
+    if(parts.length <= 1){
+      // 按句号拆分，但合并短句
+      const sentences = text.split(/(?<=[.!?])\s+/).filter(s=>s.trim());
+      const grouped = [];
+      let current = '';
+      sentences.forEach(s => {
+        if(current.length < 80){
+          current += (current?' ':'') + s.trim();
+        } else {
+          grouped.push(current.trim());
+          current = s.trim();
+        }
+      });
+      if(current) grouped.push(current.trim());
+      parts = grouped.slice(0, 5);
+    }
+
+    parts.forEach((p, i) => {
+      bullets.push({ text: p.trim(), row: startRow + i });
+    });
+
+    return bullets.slice(0, 8); // 最多8条
+  }
+
+  function cleanText(text){
+    return text
+      .replace(/\r/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .trim();
+  }
+
+  // 解析关键词sheet
+  function parseKWSheet(arr){
+    if(arr.length < 2) return [];
+    const header = arr[0].map(h => String(h||'').trim());
+    let deCol = -1, cnCol = -1, typeCol = -1;
+
+    header.forEach((h,i) => {
+      if(/关键词|keyword|Suchbegriff|德语|德文|DE/i.test(h) && deCol<0) deCol = i;
+      if(/翻译|中文|汉语|CN|chinese|Übersetzung/i.test(h) && cnCol<0) cnCol = i;
+      if(/类型|Type|Art|Kategorie/i.test(h) && typeCol<0) typeCol = i;
+    });
+
+    // 自动检测：找看起来像德语的列（含变元音äöüß）
+    if(deCol < 0){
+      for(let c=0; c<header.length; c++){
+        let hasGerman = 0;
+        for(let r=1; r<Math.min(arr.length, 20); r++){
+          const v = String(arr[r][c]||'');
+          if(/[äöüßÄÖÜ]/.test(v)) hasGerman++;
+        }
+        if(hasGerman >= 2){ deCol = c; break; }
+      }
+    }
+    if(deCol < 0) deCol = 0;
+    if(cnCol < 0) cnCol = deCol + 1 < header.length ? deCol + 1 : 1;
+
+    const kws = [];
+    const seen = new Set();
+    for(let r=1; r<arr.length; r++){
+      const de = String(arr[r][deCol]||'').trim();
+      const cn = cnCol >=0 ? String(arr[r][cnCol]||'').trim() : '';
+      const type = typeCol >=0 ? String(arr[r][typeCol]||'').trim() : '';
+      if(de && de.length > 1 && !seen.has(de.toLowerCase())){
+        kws.push({ de, cn, type: type || '关键词' });
+        seen.add(de.toLowerCase());
+      }
+    }
+    return kws;
+  }
+
+  // ========== 渲染结果 ==========
+  function renderResult(d){
+    // 标题
+    $('outTitle').textContent = d.title || '(未提取到标题)';
+    $('titleRow').textContent = '行' + (d.titleRow || '?');
+    countChars('outTitle','titleCount',200);
+
+    // 亮点（副标题）
+    $('outSubTitle').textContent = d.subTitle || '(未提取到亮点)';
+    $('subTitleRow').textContent = '行' + (d.subTitleRow || '?');
+    countChars('outSubTitle','subTitleCount',200);
+
+    // 五点全文
+    const bulletText = d.bullets.map(b => b.text).join('\n\n');
+    $('outBullets').textContent = bulletText || '(未提取到五点)';
+    $('bulletAllCount').textContent = d.bullets.length + ' 条';
+    $('bulletRow').textContent = '行' + (d.bulletStartRow || '?') + '起';
+
+    // 描述
+    $('outDesc').textContent = d.desc || '(未提取到描述)';
+    $('descRow').textContent = '行' + (d.descRow || '?');
+    $('descCount').textContent = d.desc.length + ' 字符';
+
+    // ST
+    $('outST').textContent = d.st || '(未提取到搜索词)';
+    $('stRow').textContent = '行' + (d.stRow || '?');
+    countBytes('outST','stCount',250);
+
+    // 统计
+    $('stTitleLen').textContent = d.title.length;
+    $('stSubTitleLen').textContent = (d.subTitle||'').length;
+    $('stBulletCount').textContent = d.bullets.length;
+    $('stSTLen').textContent = new Blob([d.st]).size;
+
+    // 五点逐条
+    renderBulletList(d.bullets);
+
+    // 产品信息
+    renderProductInfo(d.productInfo);
+
+    // 竞品链接
+    renderCompetitors(d.competitors);
+
+    // 完整表格预览
+    renderFullTable(d.allRows);
+
+    // 关键词
+    renderKeywords(d.keywords);
+  }
+
+  function renderBulletList(bullets){
+    const list = $('bulletList');
+    list.innerHTML = '';
+    bullets.forEach((b, i) => {
+      const div = document.createElement('div');
+      div.className = 'bullet-item';
+      const charCount = b.text.length;
+      div.innerHTML = `
+        <div class="bnum">${i+1}</div>
+        <div style="flex:1;">
+          <div class="bbody" contenteditable="true" spellcheck="false" data-idx="${i}">${escapeHtml(b.text)}</div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="bcount">${charCount} 字符</div>
+            <div class="copybar" style="margin-top:4px;">
+              <button class="mini-btn" onclick="copyBullet(${i})">📋 复制</button>
+            </div>
+          </div>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+    // 实时统计
+    list.querySelectorAll('.bbody').forEach(el => {
+      el.addEventListener('input', function(){
+        const count = this.textContent.length;
+        this.parentElement.querySelector('.bcount').textContent = count + ' 字符';
+        // 同步到全文
+        syncBulletsFromList();
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function copyBullet(i){
+    const el = document.querySelectorAll('.bbody')[i];
+    navigator.clipboard.writeText(el.textContent)
+      .then(()=>toast(`第${i+1}条已复制 ✓`))
+      .catch(()=>toast('复制失败'));
+  }
+
+  function syncBulletsFromList(){
+    const els = document.querySelectorAll('.bbody');
+    const arr = Array.from(els).map(el => el.textContent);
+    $('outBullets').textContent = arr.join('\n\n');
+    $('bulletAllCount').textContent = arr.length + ' 条';
+    if(currentData){
+      currentData.bullets = arr.map((t,i) => ({text:t, row:currentData.bullets[i]?.row||i+1}));
+      $('stBulletCount').textContent = arr.length;
+    }
+  }
+
+  function renderProductInfo(info){
+    // 产品名片
+    $('metaName').textContent = info['中文名'] || info['产品名'] || '--';
+    $('metaSku').textContent = info['SKU'] || '--';
+    $('metaAsin').textContent = info['ASIN'] || '--';
+    $('metaCategory').textContent = info['适用'] || info['材质'] || '--';
+
+    // 核心规格（取最关键的4-6个）
+    const specKeys = ['材质','尺寸','颜色','重量','数量','容量','电压','功率','适用'];
+    const specContainer = $('specGrid');
+    specContainer.innerHTML = '';
+    let specCount = 0;
+    specKeys.forEach(k => {
+      if(info[k] && specCount < 6){
+        const div = document.createElement('div');
+        div.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;';
+        div.innerHTML = `<span style="font-size:11.5px;color:var(--muted);">${k}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--accent);" title="${escapeHtml(info[k])}">${escapeHtml(info[k].length>18?info[k].slice(0,18)+'...':info[k])}</span>`;
+        specContainer.appendChild(div);
+        specCount++;
+      }
+    });
+    if(specCount === 0){
+      specContainer.innerHTML = '<div style="color:var(--muted);font-size:12px;grid-column:1/-1;">未提取到规格参数</div>';
+    }
+
+    // 详细信息（全部字段，列表形式）
+    const container = $('productInfo');
+    container.innerHTML = '';
+    const entries = Object.entries(info);
+    $('infoCount').textContent = entries.length + '项';
+    if(entries.length === 0){
+      container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">未提取到产品信息</div>';
+      return;
+    }
+    entries.forEach(([k,v], i) => {
+      const row = document.createElement('div');
+      row.style.cssText = `display:flex;gap:10px;padding:8px 12px;${i%2===0?'background:#fff;':'background:var(--panel2);'}`;
+      row.innerHTML = `
+        <div style="width:100px;flex-shrink:0;font-size:12px;color:var(--muted);padding-top:2px;">${k}</div>
+        <div style="flex:1;font-size:12.5px;font-weight:600;color:var(--txt);cursor:pointer;word-break:break-all;"
+             onclick="copyInfoVal(this)" title="点击复制">${escapeHtml(v)}</div>
+      `;
+      container.appendChild(row);
+    });
+
+    // 包装清单
+    const packing = info['包装清单'] || info['产品清单'] || info['配件清单'];
+    if(packing){
+      $('packingCard').style.display = 'block';
+      $('packingList').textContent = packing;
+    } else {
+      $('packingCard').style.display = 'none';
+    }
+  }
+
+  function copyInfoVal(el){
+    navigator.clipboard.writeText(el.textContent).then(()=>toast('已复制 ✓'));
+  }
+
+  function renderCompetitors(list){
+    const container = $('compList');
+    $('compCount').textContent = list.length + '个';
+    container.innerHTML = '';
+    if(list.length === 0){
+      container.innerHTML = '<div style="color:var(--muted);font-size:12px;">未找到竞品链接</div>';
+      return;
+    }
+    list.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'competitor-item';
+      div.innerHTML = `
+        <a href="${c.url}" target="_blank" title="${c.url}">${c.url.slice(0,70)}${c.url.length>70?'...':''}</a>
+        <span class="site">${c.site}</span>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function renderFullTable(rows){
+    const table = $('fullTable');
+    let html = '';
+    const maxRows = Math.min(rows.length, 50);
+    for(let r=0; r<maxRows; r++){
+      html += '<tr>';
+      // 行号 + A列 + H列
+      const row = rows[r];
+      html += `<td style="padding:4px 8px;border-bottom:1px solid var(--line);color:var(--faint);font-size:10.5px;width:30px;">${r+1}</td>`;
+      html += `<td style="padding:4px 8px;border-bottom:1px solid var(--line);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(String(row[0]||''))}</td>`;
+      html += `<td style="padding:4px 8px;border-bottom:1px solid var(--line);color:var(--accent);font-weight:600;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(String(row[7]||''))}</td>`;
+      html += '</tr>';
+    }
+    table.innerHTML = html;
+    if(rows.length > 50){
+      table.innerHTML += `<tr><td colspan="3" style="padding:8px;text-align:center;color:var(--faint);font-size:11px;">... 共 ${rows.length} 行，仅预览前50行</td></tr>`;
+    }
+  }
+
+  let allKeywords = [];
+  function renderKeywords(kws){
+    allKeywords = kws;
+    $('kwCountTag').textContent = kws.length + '个';
+    filterKW();
+  }
+
+  function filterKW(){
+    const q = $('kwFilter').value.trim().toLowerCase();
+    const list = q ? allKeywords.filter(k =>
+      k.de.toLowerCase().includes(q) || (k.cn||'').includes(q) || (k.type||'').includes(q)
+    ) : allKeywords;
+    const grid = $('kwGrid');
+    grid.innerHTML = '';
+    if(list.length === 0){
+      grid.innerHTML = '<div style="color:var(--muted);font-size:12px;grid-column:1/-1;">无关键词</div>';
+      return;
+    }
+    list.slice(0, 100).forEach(k => {
+      const div = document.createElement('div');
+      div.className = 'kw-item';
+      div.innerHTML = `
+        <span class="kde" onclick="copyKW('${k.de.replace(/'/g,"\\'")}')" title="点击复制">${escapeHtml(k.de)}</span>
+        <span class="kcn">${escapeHtml(k.cn||'')}</span>
+      `;
+      grid.appendChild(div);
+    });
+    if(list.length > 100){
+      const more = document.createElement('div');
+      more.style.cssText = 'grid-column:1/-1;text-align:center;color:var(--faint);font-size:11px;padding:6px;';
+      more.textContent = `... 还有 ${list.length-100} 个，请搜索筛选`;
+      grid.appendChild(more);
+    }
+  }
+
+  function copyKW(word){
+    navigator.clipboard.writeText(word).then(()=>toast('已复制: '+word));
+  }
+
+  // ========== 复制功能 ==========
+  function copyText(id){
+    const text = $(id).textContent;
+    navigator.clipboard.writeText(text)
+      .then(()=>toast('已复制到剪贴板 ✓'))
+      .catch(()=>{
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+        toast('已复制 ✓');
+      });
+  }
+
+  function copyTitleBoth(){
+    const title = $('outTitle').textContent;
+    const sub = $('outSubTitle').textContent;
+    const text = title + '\n' + sub;
+    navigator.clipboard.writeText(text).then(()=>toast('标题+亮点已复制 ✓'));
+  }
+
+  function copyBulletsNumbered(){
+    if(!currentData) return;
+    const txt = currentData.bullets.map((b,i)=>`【Bullet Point ${i+1}】\n${b.text}`).join('\n\n');
+    navigator.clipboard.writeText(txt).then(()=>toast('已按编号复制 ✓'));
+  }
+  function copyBulletsLine(){
+    if(!currentData) return;
+    navigator.clipboard.writeText(currentData.bullets.map(b=>b.text).join('\n'))
+      .then(()=>toast('已逐行复制 ✓'));
+  }
+  function copyAllBullets(){
+    if(!currentData) return;
+    navigator.clipboard.writeText(currentData.bullets.map(b=>b.text).join('\n\n'))
+      .then(()=>toast('全部五点已复制 ✓'));
+  }
+  function copyBulletsForAmazon(){
+    if(!currentData) return;
+    // 亚马逊后台格式：每条单独字段
+    navigator.clipboard.writeText(currentData.bullets.map(b=>b.text).join('\n===\n'))
+      .then(()=>toast('后台格式已复制 ✓'));
+  }
+
+  function copyDescPlain(){
+    const text = $('outDesc').textContent.replace(/\n+/g,'\n').trim();
+    navigator.clipboard.writeText(text).then(()=>toast('纯文本已复制 ✓'));
+  }
+  function copyDescHTML(){
+    const lines = $('outDesc').textContent.split('\n').filter(l=>l.trim());
+    const html = lines.map(l => {
+      if(/^[A-ZÄÖÜ][A-ZÄÖÜa-zäöüß\s]+:/.test(l.trim())) return `<p><strong>${l.trim()}</strong></p>`;
+      if(/^[★✅•\-]/.test(l.trim())) return `<li>${l.trim()}</li>`;
+      return `<p>${l.trim()}</p>`;
+    }).join('\n');
+    navigator.clipboard.writeText(html).then(()=>toast('HTML格式已复制 ✓'));
+  }
+
+  // ========== 统计 ==========
+  function countChars(id, labelId, max){
+    const n = $(id).textContent.length;
+    const el = $(labelId);
+    el.textContent = n + ' / ' + max;
+    el.classList.remove('warn','bad','good');
+    if(n > max) el.classList.add('bad');
+    else if(n > max*0.9) el.classList.add('warn');
+    else if(n > max*0.5) el.classList.add('good');
+  }
+
+  function countBytes(id, labelId, max){
+    const bytes = new Blob([$(id).textContent]).size;
+    const el = $(labelId);
+    el.textContent = bytes + ' / ' + max + ' B';
+    el.classList.remove('warn','bad','good');
+    if(bytes > max) el.classList.add('bad');
+    else if(bytes > max*0.9) el.classList.add('warn');
+    else if(bytes > 0) el.classList.add('good');
+  }
+
+  // 实时更新
+  ['outTitle','outBullets','outDesc','outST'].forEach(id => {
+    $(id).addEventListener('input', () => {
+      if(id==='outTitle') countChars(id,'titleCount',200);
+      if(id==='outDesc') $('descCount').textContent = $(id).textContent.length + ' 字符';
+      if(id==='outST') countBytes(id,'stCount',250);
+      if(id==='outBullets'){
+        const n = $(id).textContent.split(/\n\s*\n/).filter(l=>l.trim()).length;
+        $('bulletAllCount').textContent = n + ' 条';
+      }
+      // 更新统计
+      if(currentData){
+        $('stTitleLen').textContent = $('outTitle').textContent.length;
+        $('stDescLen').textContent = $('outDesc').textContent.length;
+      }
+    });
+  });
+
+  // 标题合规检查
+  function checkTitle(){
+    const text = $('outTitle').textContent;
+    const issues = [];
+    if(text.length > 200) issues.push(`字符数 ${text.length}，超过200`);
+    if(/[!@#$%^&*]/.test(text)) issues.push('含特殊符号，亚马逊不推荐');
+    if(/全部大写|ALL CAPS/.test(text)) issues.push('不要全部大写');
+    if(text.length < 80) issues.push('字符数偏少，建议80-180之间');
+    if(issues.length === 0) toast('✅ 标题基本合规');
+    else toast('⚠️ ' + issues[0]);
+  }
+
+  // ========== 重置 ==========
+  function resetAll(){
+    if(!confirm('确定清空所有内容吗？')) return;
+    currentData = null;
+    $('uploadCard').style.display = 'block';
+    $('resultArea').style.display = 'none';
+    toast('已清空');
+  }
+
+  // 页面加载时，如果有本地缓存自动加载
+  try{
+    const saved = localStorage.getItem('last_listing_file');
+    // 不自动加载文件，只显示提示
+  }catch(e){}
+</script>
+</body>
+</html>
