@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FBA运费计算器 - 亚马逊运营工具箱</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:system-ui,"Microsoft YaHei",sans-serif;
+    min-height:100vh;color:#1e3328;position:relative;
+    padding:30px 20px 50px;background:#f0f7f2;}
+
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-2;
+    background:linear-gradient(135deg,#e8f4ec 0%,#d6ead9 100%);
+  }
+
+  .wrap{max-width:960px;margin:0 auto;}
+
+  .back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;
+    color:#2d8659;font-size:13px;font-weight:600;margin-bottom:16px;
+    padding:6px 12px;border-radius:8px;background:rgba(255,255,255,.7);
+    border:1px solid #c9ddd1;transition:.2s;}
+  .back:hover{background:#fff;border-color:#2d8659;}
+
+  h1{color:#2d8659;font-size:30px;margin-bottom:6px;}
+  .sub{color:#6b8f7a;margin-bottom:20px;font-size:14px;}
+  .date-tag{display:inline-block;background:#fffbe6;color:#8a6d1c;
+    padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;
+    border:1px solid #f0e0a0;margin-bottom:20px;}
+
+  /* 站点切换 */
+  .site-switch{display:flex;gap:6px;margin-bottom:20px;
+    background:rgba(255,255,255,.7);padding:6px;border-radius:12px;
+    border:1px solid #c9ddd1;backdrop-filter:blur(8px);width:fit-content;}
+  .site-btn{padding:8px 20px;border-radius:8px;cursor:pointer;
+    font-size:14px;font-weight:600;color:#4f6b5b;transition:.2s;
+    border:none;background:transparent;font-family:inherit;
+    display:flex;align-items:center;gap:6px;}
+  .site-btn.active{background:#2d8659;color:#fff;box-shadow:0 2px 8px rgba(45,134,89,.3);}
+  .site-btn:hover:not(.active){color:#2d8659;}
+
+  /* 卡片 */
+  .card{background:rgba(255,255,255,.92);backdrop-filter:blur(10px);
+    border-radius:18px;padding:24px;margin-bottom:20px;
+    border:1.5px solid #c9ddd1;box-shadow:0 4px 24px rgba(0,60,30,.06);}
+  .card h2{font-size:16px;color:#2d8659;margin-bottom:16px;
+    display:flex;align-items:center;gap:8px;}
+  .card h2 .hint{font-size:11px;color:#8fb0a0;font-weight:400;margin-left:auto;}
+
+  /* 表单 */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;}
+  .field label{display:block;font-size:12px;color:#6b8f7a;font-weight:600;margin-bottom:6px;}
+  .field input, .field select{
+    width:100%;padding:10px 12px;border:1.5px solid #c9ddd1;border-radius:10px;
+    background:#fff;color:#1e3328;font-size:14px;font-family:inherit;transition:.2s;}
+  .field input:focus, .field select:focus{
+    outline:none;border-color:#2d8659;box-shadow:0 0 0 3px rgba(45,134,89,.12);}
+  .field.full{grid-column:1 / -1;}
+
+  /* 结果 */
+  .result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
+  .result-item{background:#f0f7f2;border-radius:12px;padding:16px;
+    border:1px solid #d6ead9;}
+  .result-item .label{font-size:12px;color:#6b8f7a;margin-bottom:4px;}
+  .result-item .value{font-size:22px;font-weight:800;color:#2d8659;}
+  .result-item .unit{font-size:12px;color:#6b8f7a;font-weight:500;}
+  .result-item.highlight{background:linear-gradient(135deg,#e8f8ec,#d1f0d8);
+    border-color:#2d8659;}
+  .result-item.highlight .value{color:#1a6b43;}
+  .result-item .tier{font-size:11px;background:#fff;padding:2px 6px;border-radius:4px;
+    display:inline-block;margin-top:4px;color:#2d8659;border:1px solid #d6ead9;}
+
+  .btn-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .btn{padding:9px 16px;border-radius:10px;border:none;cursor:pointer;
+    font-size:13px;font-weight:600;transition:.2s;font-family:inherit;
+    display:inline-flex;align-items:center;gap:6px;}
+  .btn.primary{background:#2d8659;color:#fff;box-shadow:0 2px 8px rgba(45,134,89,.3);}
+  .btn.primary:hover{filter:brightness(1.08);transform:translateY(-1px);}
+  .btn.secondary{background:#fff;color:#2d8659;border:1.5px solid #c9ddd1;}
+  .btn.secondary:hover{border-color:#2d8659;}
+
+  details{margin-top:14px;border:1px solid #d6ead9;border-radius:10px;
+    background:#fafdfb;overflow:hidden;}
+  details summary{padding:12px 16px;cursor:pointer;font-size:13px;
+    font-weight:600;color:#2d8659;list-style:none;display:flex;align-items:center;gap:8px;}
+  details summary::-webkit-details-marker{display:none;}
+  details summary::before{content:'▶';font-size:10px;color:#8fb0a0;transition:.15s;}
+  details[open] summary::before{transform:rotate(90deg);}
+  details .dc{padding:0 16px 16px;}
+
+  .info-box{background:#fffbe6;border:1px solid #f0e0a0;border-radius:10px;
+    padding:12px 16px;font-size:12px;color:#8a6d1c;line-height:1.7;
+    margin-top:16px;}
+  .info-box b{color:#6b520f;}
+
+  /* 费率选项卡 */
+  .fee-tabs{display:flex;gap:6px;margin-bottom:12px;border-bottom:2px solid #d6ead9;}
+  .fee-tab{padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;
+    color:#8fb0a0;border:none;background:transparent;font-family:inherit;
+    border-bottom:2px solid transparent;margin-bottom:-2px;transition:.2s;}
+  .fee-tab.active{color:#2d8659;border-bottom-color:#2d8659;}
+
+  /* 费率表 */
+  .fee-table{width:100%;border-collapse:separate;border-spacing:0;
+    font-size:12px;}
+  .fee-table th{background:#f0f7f2;color:#2d8659;font-weight:700;
+    padding:8px 10px;text-align:left;border-bottom:2px solid #d6ead9;
+    font-size:11px;position:sticky;top:0;z-index:1;}
+  .fee-table td{padding:6px 8px;border-bottom:1px solid #e8f0ea;}
+  .fee-table tr:last-child td{border-bottom:none;}
+  .fee-table .cat-row td{background:#e8f4ec;font-weight:700;color:#2d8659;
+    font-size:12px;}
+  .fee-table input{
+    width:100%;padding:4px 6px;border:1px solid #d6ead9;border-radius:5px;
+    font-size:12px;font-family:inherit;background:#fafdfb;}
+  .fee-table input:focus{outline:none;border-color:#2d8659;background:#fff;}
+  .fee-table .tier-name{color:#2d8659;font-weight:600;font-size:11px;}
+  .table-wrap{max-height:420px;overflow-y:auto;border-radius:10px;
+    border:1px solid #d6ead9;}
+
+  footer{text-align:center;color:#8fb0a0;font-size:12px;margin-top:30px;}
+
+  @media(max-width:600px){
+    h1{font-size:24px;}
+    .form-grid{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a href="../" class="back">← 返回工具箱</a>
+  <h1>🚚 FBA 运费计算器</h1>
+  <p class="sub">美国站 / 德国站 FBA 配送费估算，按官方 2026 费率表</p>
+  <div class="date-tag">📅 数据来源：Amazon 官方费率卡 2026</div>
+
+  <!-- 站点切换 -->
+  <div class="site-switch">
+    <button class="site-btn active" onclick="switchSite('de')">🇩🇪 德国站</button>
+    <button class="site-btn" onclick="switchSite('us')">🇺🇸 美国站</button>
+  </div>
+
+  <!-- 输入区 -->
+  <div class="card">
+    <h2>📏 产品参数
+      <span class="hint">自动匹配尺寸分档</span>
+    </h2>
+    <div class="form-grid">
+      <div class="field">
+        <label>长 (cm)</label>
+        <input type="number" id="p_length" placeholder="如 25" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>宽 (cm)</label>
+        <input type="number" id="p_width" placeholder="如 15" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>高 (cm)</label>
+        <input type="number" id="p_height" placeholder="如 10" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>实重 (kg)</label>
+        <input type="number" id="p_weight" placeholder="如 0.5" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>产品售价</label>
+        <input type="number" id="p_price" placeholder="如 29.99" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>类目佣金率 (%)</label>
+        <input type="number" id="p_commission" value="15" oninput="calc()">
+      </div>
+      <div class="field" id="de_plan_field">
+        <label>德站计划</label>
+        <select id="de_plan" onchange="calc()">
+          <option value="cep">CEP 中欧计划（更便宜）</option>
+          <option value="deonly">DE Only 仅德国</option>
+        </select>
+      </div>
+      <div class="field" id="us_price_tier_field" style="display:none;">
+        <label>售价区间 (美站)</label>
+        <select id="us_price_tier" onchange="calc()">
+          <option value="low">≤ $10（低价 FBA）</option>
+          <option value="mid" selected>$10 - $50</option>
+          <option value="high">> $50</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果区 -->
+  <div class="card">
+    <h2>🧮 计算结果</h2>
+    <div class="result-grid">
+      <div class="result-item">
+        <div class="label">尺寸分档</div>
+        <div class="value" id="r_tier" style="font-size:16px;line-height:1.3;">—</div>
+        <div class="tier" id="r_sizeType">标准尺寸</div>
+      </div>
+      <div class="result-item">
+        <div class="label">体积重</div>
+        <div class="value" id="r_volWeight">0</div>
+        <div class="unit" id="r_wunit">kg</div>
+      </div>
+      <div class="result-item">
+        <div class="label">计费重</div>
+        <div class="value" id="r_chargeWeight">0</div>
+        <div class="unit" id="r_wunit2">kg</div>
+      </div>
+      <div class="result-item highlight">
+        <div class="label">FBA 配送费</div>
+        <div class="value" id="r_fee">0</div>
+        <div class="unit" id="r_currency">€ EUR</div>
+      </div>
+    </div>
+
+    <div class="result-grid" style="margin-top:14px;">
+      <div class="result-item">
+        <div class="label">类目佣金</div>
+        <div class="value" id="r_commission">0</div>
+        <div class="unit" id="r_currency2">€ EUR</div>
+      </div>
+      <div class="result-item" style="background:#fdecea;border-color:#f0c0c0;">
+        <div class="label" style="color:#a03030;">平台总费用</div>
+        <div class="value" style="color:#d64545;" id="r_totalFee">0</div>
+        <div class="unit" style="color:#a03030;" id="r_currency3">€ EUR</div>
+      </div>
+      <div class="result-item highlight" style="background:linear-gradient(135deg,#2d8659,#1a6b43);border-color:transparent;">
+        <div class="label" style="color:rgba(255,255,255,.8);">到手金额（售价 - 平台费）</div>
+        <div class="value" style="color:#fff;" id="r_net">0</div>
+        <div class="unit" style="color:rgba(255,255,255,.7);" id="r_currency4">€ EUR</div>
+      </div>
+    </div>
+
+    <div class="info-box" id="r_info" style="display:none;"></div>
+  </div>
+
+  <!-- 费率设置 -->
+  <details>
+    <summary>⚙️ 费率表（可编辑，修改后自动保存）</summary>
+    <div class="dc">
+      <p style="font-size:12px;color:#6b8f7a;margin-bottom:12px;">
+        💡 费率基于 2026 年官方数据，价格可自行调整，修改后自动保存到本地浏览器。
+      </p>
+
+      <div class="fee-tabs">
+        <button class="fee-tab active" onclick="switchFeeTab('de')">🇩🇪 德国站</button>
+        <button class="fee-tab" onclick="switchFeeTab('us')">🇺🇸 美国站</button>
+      </div>
+
+      <div id="fee_panel_de">
+        <div class="table-wrap">
+          <table class="fee-table" id="feeTable_de">
+            <thead>
+              <tr>
+                <th>分类 / 尺寸档</th>
+                <th>长×宽×高 (cm)</th>
+                <th>计费重 ≤</th>
+                <th>CEP (€)</th>
+                <th>DE Only (€)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="fee_panel_us" style="display:none;">
+        <div class="table-wrap">
+          <table class="fee-table" id="feeTable_us">
+            <thead>
+              <tr>
+                <th>分类 / 尺寸档</th>
+                <th>计费重 ≤</th>
+                <th>≤$10 ($)</th>
+                <th>$10–50 ($)</th>
+                <th>>$50 ($)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn secondary" onclick="resetFees()">↺ 恢复默认费率</button>
+      </div>
+    </div>
+  </details>
+
+  <footer>亚马逊运营工具箱 · FBA运费计算器</footer>
+</div>
+
+<script>
+// ========== 德国站费率（2026年7月1日生效）==========
+// category: 尺寸分类名称，用于显示大类别
+// name: 具体尺寸档名称
+// maxLong/Med/Short: 三边最大限制（cm），null 表示无限制
+// maxWeight: 最大计费重（kg）
+// feeCEP / feeDE: CEP 和 DE Only 价格（€）
+const DEFAULT_DE = [
+  // 信封类
+  { cat: '轻信封 Light envelope', name: '≤ 20g', maxLong: 35, maxMed: 25, maxShort: 2,   maxWeight: 0.02,  feeCEP: 2.07, feeDE: 2.33 },
+  { cat: '',                        name: '≤ 40g', maxLong: 35, maxMed: 25, maxShort: 2,   maxWeight: 0.04,  feeCEP: 2.11, feeDE: 2.37 },
+  { cat: '',                        name: '≤ 60g', maxLong: 35, maxMed: 25, maxShort: 2,   maxWeight: 0.06,  feeCEP: 2.13, feeDE: 2.39 },
+  { cat: '',                        name: '≤ 80g', maxLong: 35, maxMed: 25, maxShort: 2,   maxWeight: 0.08,  feeCEP: 2.26, feeDE: 2.52 },
+  { cat: '',                        name: '≤ 100g', maxLong: 35, maxMed: 25, maxShort: 2,   maxWeight: 0.10,  feeCEP: 2.28, feeDE: 2.54 },
+  { cat: '',                        name: '≤ 210g', maxLong: 35, maxMed: 25, maxShort: 2,   maxWeight: 0.21,  feeCEP: 2.31, feeDE: 2.57 },
+  { cat: '标准信封 Standard envelope', name: '≤ 460g', maxLong: 35, maxMed: 25, maxShort: 5, maxWeight: 0.46, feeCEP: 2.42, feeDE: 2.68 },
+  { cat: '大信封 Large envelope',   name: '≤ 960g', maxLong: 35, maxMed: 25, maxShort: 5,   maxWeight: 0.96,  feeCEP: 2.78, feeDE: 3.04 },
+  { cat: '超大信封 Extra-large envelope', name: '≤ 960g', maxLong: 38, maxMed: 27, maxShort: 5, maxWeight: 0.96, feeCEP: 3.16, feeDE: 3.42 },
+
+  // 小包裹
+  { cat: '小包裹 Small parcel (≤35×25×12cm)', name: '≤ 150g', maxLong: 35, maxMed: 25, maxShort: 12, maxWeight: 0.15, feeCEP: 3.12, feeDE: 3.38 },
+  { cat: '',                                 name: '≤ 400g', maxLong: 35, maxMed: 25, maxShort: 12, maxWeight: 0.40, feeCEP: 3.13, feeDE: 3.39 },
+  { cat: '',                                 name: '≤ 900g', maxLong: 35, maxMed: 25, maxShort: 12, maxWeight: 0.90, feeCEP: 3.14, feeDE: 3.40 },
+  { cat: '',                                 name: '≤ 1.4kg', maxLong: 35, maxMed: 25, maxShort: 12, maxWeight: 1.40, feeCEP: 3.15, feeDE: 3.41 },
+  { cat: '',                                 name: '≤ 1.9kg', maxLong: 35, maxMed: 25, maxShort: 12, maxWeight: 1.90, feeCEP: 3.17, feeDE: 3.43 },
+  { cat: '',                                 name: '≤ 3.9kg', maxLong: 35, maxMed: 25, maxShort: 12, maxWeight: 3.90, feeCEP: 4.28, feeDE: 4.54 },
+
+  // 标准包裹
+  { cat: '标准包裹 Standard parcel (≤45×34×26cm)', name: '≤ 150g', maxLong: 45, maxMed: 34, maxShort: 26, maxWeight: 0.15, feeCEP: 3.13, feeDE: 3.39 },
+  { cat: '',                                     name: '≤ 400g', maxLong: 45, maxMed: 34, maxShort: 26, maxWeight: 0.40, feeCEP: 3.16, feeDE: 3.42 },
+  { cat: '',                                     name: '≤ 900g', maxLong: 45, maxMed: 34, maxShort: 26, maxWeight: 0.90, feeCEP: 3.18, feeDE: 3.44 },
+  { cat: '',                                     name: '≤ 1.4kg', maxLong: 45, maxMed: 34, maxShort: 26, maxWeight: 1.40, feeCEP: 3.67, feeDE: 3.93 },
+  { cat: '',                                     name: '≤ 1.9kg', maxLong: 45, maxMed: 34, maxShort: 26, maxWeight: 1.90, feeCEP: 3.69, feeDE: 3.95 },
+  { cat: '',                                     name: '≤ 2.9kg', maxLong: 45, maxMed: 34, maxShort: 26, maxWeight: 2.90, feeCEP: 4.29, feeDE: 4.55 },
+  { cat: '',                                     name: '≤ 3.9kg', maxLong: 45, maxMed: 34, maxShort: 26, maxWeight: 3.90, feeCEP: 4.83, feeDE: 5.09 },
+  { cat: '',                                     name: '≤ 5.9kg', maxLong: 45, maxMed: 34, maxShort: 26, maxWeight: 5.90, feeCEP: 4.96, feeDE: 5.22 },
+  { cat: '',                                     name: '≤ 8.9kg', maxLong: 45, maxMed: 34, maxShort: 26, maxWeight: 8.90, feeCEP: 5.77, feeDE: 6.03 },
+  { cat: '',                                     name: '≤ 11.9kg', maxLong: 45, maxMed: 34, maxShort: 26, maxWeight: 11.90, feeCEP: 6.39, feeDE: 6.65 },
+
+  // 超大件
+  { cat: '小型超大件 Small oversize',              name: '≤ 760g', maxLong: 60, maxMed: 40, maxShort: 35, maxWeight: 0.76, feeCEP: 4.30, feeDE: 4.56 },
+  { cat: '标准超大件轻 Standard oversize light',    name: '≤ 760g', maxLong: 120, maxMed: 60, maxShort: 45, maxWeight: 0.76, feeCEP: 4.33, feeDE: 4.59 },
+  { cat: '标准超大件重 Standard oversize heavy',    name: '≤ 15.76kg', maxLong: 120, maxMed: 60, maxShort: 45, maxWeight: 15.76, feeCEP: 6.99, feeDE: 7.25 },
+  { cat: '大型超大件 Standard oversize large',      name: '≤ 760g', maxLong: 175, maxMed: 120, maxShort: 80, maxWeight: 0.76, feeCEP: 5.80, feeDE: 6.06 },
+  { cat: '重型超大件 Bulky oversize',               name: '≤ 760g', maxLong: 999, maxMed: 999, maxShort: 999, maxWeight: 0.76, feeCEP: 7.98, feeDE: 8.24 },
+  { cat: '特重超大件 Heavy oversize',               name: '≤ 31.5kg', maxLong: 999, maxMed: 999, maxShort: 999, maxWeight: 31.5, feeCEP: 12.74, feeDE: 13.00 },
+];
+
+// ========== 美国站费率（2026年1月15日生效）==========
+// cat: 尺寸分类
+// name: 具体档位
+// maxWeight: 计费重上限（oz 或 lb，统一用 lb）
+// isOz: 是否以 oz 计
+// sizeType: small / large / bulky / extra-large（用于尺寸判断）
+// feeLow / feeMid / feeHigh: ≤$10 / $10-50 / >$50 三档价格
+const DEFAULT_US = [
+  // Small Standard (尺寸: 15×12×0.75 in)
+  { cat: '小标准 Small Standard', name: '≤ 2 oz',       sizeType: 'small',   maxWeight: 0.125, isOz: true, feeLow: 2.43, feeMid: 3.32, feeHigh: 3.58 },
+  { cat: '',                      name: '2+ ~ 4 oz',    sizeType: 'small',   maxWeight: 0.25,  isOz: true, feeLow: 2.49, feeMid: 3.42, feeHigh: 3.68 },
+  { cat: '',                      name: '4+ ~ 6 oz',    sizeType: 'small',   maxWeight: 0.375, isOz: true, feeLow: 2.56, feeMid: 3.45, feeHigh: 3.71 },
+  { cat: '',                      name: '6+ ~ 8 oz',    sizeType: 'small',   maxWeight: 0.5,   isOz: true, feeLow: 2.66, feeMid: 3.54, feeHigh: 3.80 },
+  { cat: '',                      name: '8+ ~ 10 oz',   sizeType: 'small',   maxWeight: 0.625, isOz: true, feeLow: 2.77, feeMid: 3.68, feeHigh: 3.94 },
+  { cat: '',                      name: '10+ ~ 12 oz',  sizeType: 'small',   maxWeight: 0.75,  isOz: true, feeLow: 2.82, feeMid: 3.78, feeHigh: 4.04 },
+  { cat: '',                      name: '12+ ~ 14 oz',  sizeType: 'small',   maxWeight: 0.875, isOz: true, feeLow: 2.92, feeMid: 3.91, feeHigh: 4.17 },
+  { cat: '',                      name: '14+ ~ 16 oz',  sizeType: 'small',   maxWeight: 1.0,   isOz: true, feeLow: 2.95, feeMid: 3.96, feeHigh: 4.22 },
+
+  // Large Standard (尺寸: 18×14×8 in)
+  { cat: '大标准 Large Standard', name: '≤ 4 oz',       sizeType: 'large',   maxWeight: 0.25,  isOz: true, feeLow: 2.91, feeMid: 3.73, feeHigh: 3.99 },
+  { cat: '',                      name: '4+ ~ 8 oz',    sizeType: 'large',   maxWeight: 0.5,   isOz: true, feeLow: 3.13, feeMid: 3.95, feeHigh: 4.21 },
+  { cat: '',                      name: '8+ ~ 12 oz',   sizeType: 'large',   maxWeight: 0.75,  isOz: true, feeLow: 3.38, feeMid: 4.20, feeHigh: 4.46 },
+  { cat: '',                      name: '12+ ~ 16 oz',  sizeType: 'large',   maxWeight: 1.0,   isOz: true, feeLow: 3.78, feeMid: 4.60, feeHigh: 4.86 },
+  { cat: '',                      name: '1 ~ 1.25 lb',  sizeType: 'large',   maxWeight: 1.25,  isOz: false, feeLow: 4.22, feeMid: 5.04, feeHigh: 5.30 },
+  { cat: '',                      name: '1.25 ~ 1.5 lb', sizeType: 'large',  maxWeight: 1.5,   isOz: false, feeLow: 4.60, feeMid: 5.42, feeHigh: 5.68 },
+  { cat: '',                      name: '1.5 ~ 1.75 lb', sizeType: 'large', maxWeight: 1.75,  isOz: false, feeLow: 4.75, feeMid: 5.57, feeHigh: 5.83 },
+  { cat: '',                      name: '1.75 ~ 2 lb',   sizeType: 'large', maxWeight: 2.0,   isOz: false, feeLow: 5.00, feeMid: 5.82, feeHigh: 6.08 },
+  { cat: '',                      name: '2 ~ 2.25 lb',   sizeType: 'large', maxWeight: 2.25,  isOz: false, feeLow: 5.10, feeMid: 5.92, feeHigh: 6.18 },
+  { cat: '',                      name: '2.25 ~ 2.5 lb', sizeType: 'large', maxWeight: 2.5,   isOz: false, feeLow: 5.28, feeMid: 6.10, feeHigh: 6.36 },
+  { cat: '',                      name: '2.5 ~ 2.75 lb', sizeType: 'large', maxWeight: 2.75,  isOz: false, feeLow: 5.44, feeMid: 6.26, feeHigh: 6.52 },
+  { cat: '',                      name: '2.75 ~ 3 lb',   sizeType: 'large', maxWeight: 3.0,   isOz: false, feeLow: 5.85, feeMid: 6.67, feeHigh: 6.93 },
+  { cat: '',                      name: '3 ~ 20 lb',     sizeType: 'large', maxWeight: 20.0,  isOz: false, feeLow: 6.15, feeMid: 6.97, feeHigh: 7.23 },
+  // 注：3~20lb 每超4oz +$0.08（超出3lb部分），简化按 20lb 顶档处理
+
+  // Bulky & Extra-Large
+  { cat: '小型大件 Small Bulky',  name: '0 ~ 50 lb',    sizeType: 'bulkyS',  maxWeight: 50,    isOz: false, feeLow: 6.78, feeMid: 7.55, feeHigh: 7.55 },
+  { cat: '大型大件 Large Bulky',  name: '0 ~ 50 lb',    sizeType: 'bulkyL',  maxWeight: 50,    isOz: false, feeLow: 8.58, feeMid: 9.35, feeHigh: 9.35 },
+  { cat: '超大件 Extra-Large',    name: '0 ~ 50 lb',    sizeType: 'xl',      maxWeight: 50,    isOz: false, feeLow: 25.56, feeMid: 26.33, feeHigh: 26.33 },
+  { cat: '',                      name: '50 ~ 70 lb',    sizeType: 'xl',      maxWeight: 70,    isOz: false, feeLow: 36.35, feeMid: 37.32, feeHigh: 37.32 },
+  { cat: '',                      name: '70 ~ 150 lb',   sizeType: 'xl',      maxWeight: 150,   isOz: false, feeLow: 50.55, feeMid: 51.32, feeHigh: 51.32 },
+  { cat: '',                      name: '150+ lb',       sizeType: 'xl',      maxWeight: 9999,  isOz: false, feeLow: 194.18, feeMid: 194.95, feeHigh: 194.95 },
+];
+
+// 美国站尺寸分档尺寸限制（单位：英寸 in）
+const US_SIZE_TIERS = {
+  small:    { long: 15, med: 12, short: 0.75 },
+  large:    { long: 18, med: 14, short: 8 },
+  bulkyS:   { long: 60, med: 30, short: 20 },  // small bulky
+  bulkyL:   { long: 108, med: 60, short: 30 }, // large bulky
+  xl:       { long: 9999, med: 9999, short: 9999 },
+};
+
+const CURRENCY = { de: '€ EUR', us: '$ USD' };
+const VOL_FACTOR = { de: 5000, us: 139 }; // 德站 cm³/5000=kg，美站 in³/139=lb
+
+// ========== 状态 ==========
+let currentSite = 'de';
+let fees = { de: JSON.parse(JSON.stringify(DEFAULT_DE)), us: JSON.parse(JSON.stringify(DEFAULT_US)) };
+
+// 本地存储
+function loadFees(){
+  try{
+    const d = localStorage.getItem('fba_fees_de_v2');
+    const u = localStorage.getItem('fba_fees_us_v2');
+    if(d) fees.de = JSON.parse(d);
+    if(u) fees.us = JSON.parse(u);
+  }catch(e){}
+}
+function saveFees(site){
+  try{ localStorage.setItem('fba_fees_' + site + '_v2', JSON.stringify(fees[site])); }catch(e){}
+}
+
+function resetFees(){
+  const site = currentSite;
+  if(!confirm('确定恢复当前站点的默认费率吗？')) return;
+  fees[site] = JSON.parse(JSON.stringify(site === 'de' ? DEFAULT_DE : DEFAULT_US));
+  saveFees(site);
+  renderFeeTable(site);
+  calc();
+  alert('已恢复默认费率');
+}
+
+// ========== 站点切换 ==========
+function switchSite(site){
+  currentSite = site;
+  document.querySelectorAll('.site-btn').forEach((b,i) => {
+    b.classList.toggle('active', (i===0 && site==='de') || (i===1 && site==='us'));
+  });
+
+  // 显示/隐藏德站特有选项
+  document.getElementById('de_plan_field').style.display = site === 'de' ? 'block' : 'none';
+  document.getElementById('us_price_tier_field').style.display = site === 'us' ? 'block' : 'none';
+
+  // 切换费率表标签
+  switchFeeTab(site);
+
+  calc();
+}
+
+function switchFeeTab(site){
+  document.querySelectorAll('.fee-tab').forEach((b,i) => {
+    b.classList.toggle('active', (i===0 && site==='de') || (i===1 && site==='us'));
+  });
+  document.getElementById('fee_panel_de').style.display = site === 'de' ? 'block' : 'none';
+  document.getElementById('fee_panel_us').style.display = site === 'us' ? 'block' : 'none';
+}
+
+// ========== 渲染费率表 ==========
+function renderFeeTable(site){
+  const tbody = document.querySelector('#feeTable_' + site + ' tbody');
+  tbody.innerHTML = '';
+  let lastCat = '';
+  fees[site].forEach((tier, idx) => {
+    if(tier.cat && tier.cat !== lastCat){
+      lastCat = tier.cat;
+      const catRow = document.createElement('tr');
+      catRow.className = 'cat-row';
+      if(site === 'de'){
+        catRow.innerHTML = `<td colspan="5">${tier.cat}</td>`;
+      } else {
+        catRow.innerHTML = `<td colspan="5">${tier.cat}</td>`;
+      }
+      tbody.appendChild(catRow);
+    }
+
+    const tr = document.createElement('tr');
+    if(site === 'de'){
+      const dims = (tier.maxLong >= 999) ? '—' : `${tier.maxLong}×${tier.maxMed}×${tier.maxShort}`;
+      tr.innerHTML = `
+        <td class="tier-name">${tier.name}</td>
+        <td style="color:#6b8f7a;font-size:11px;">${dims}</td>
+        <td><input type="number" step="0.01" value="${tier.maxWeight}" onchange="updateFee(${idx},'maxWeight',this.value,'de')" style="width:80px;"></td>
+        <td><input type="number" step="0.01" value="${tier.feeCEP}" onchange="updateFee(${idx},'feeCEP',this.value,'de')" style="width:80px;"></td>
+        <td><input type="number" step="0.01" value="${tier.feeDE}" onchange="updateFee(${idx},'feeDE',this.value,'de')" style="width:80px;"></td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td class="tier-name">${tier.name}</td>
+        <td><input type="number" step="0.001" value="${tier.maxWeight}" onchange="updateFee(${idx},'maxWeight',this.value,'us')" style="width:80px;"></td>
+        <td><input type="number" step="0.01" value="${tier.feeLow}" onchange="updateFee(${idx},'feeLow',this.value,'us')" style="width:70px;"></td>
+        <td><input type="number" step="0.01" value="${tier.feeMid}" onchange="updateFee(${idx},'feeMid',this.value,'us')" style="width:70px;"></td>
+        <td><input type="number" step="0.01" value="${tier.feeHigh}" onchange="updateFee(${idx},'feeHigh',this.value,'us')" style="width:70px;"></td>
+      `;
+    }
+    tbody.appendChild(tr);
+  });
+}
+
+function updateFee(idx, field, value, site){
+  const v = parseFloat(value);
+  if(!isNaN(v) && v >= 0){
+    fees[site][idx][field] = v;
+    saveFees(site);
+    calc();
+  }
+}
+
+// ========== 计算 ==========
+function calc(){
+  const l = parseFloat(document.getElementById('p_length').value) || 0;
+  const w = parseFloat(document.getElementById('p_width').value) || 0;
+  const h = parseFloat(document.getElementById('p_height').value) || 0;
+  const weightKg = parseFloat(document.getElementById('p_weight').value) || 0;
+  const price = parseFloat(document.getElementById('p_price').value) || 0;
+  const commissionRate = parseFloat(document.getElementById('p_commission').value) || 0;
+
+  const site = currentSite;
+  const currency = CURRENCY[site];
+
+  // 三边排序
+  const dimsCm = [l, w, h].sort((a,b) => b-a);
+  const longestCm = dimsCm[0];
+  const medianCm = dimsCm[1];
+  const shortestCm = dimsCm[2];
+
+  let matchedTier, chargeWeight, volWeight, actualWeight;
+  let fbaFee = 0;
+  let tierCategory = '';
+  let weightUnit = 'kg';
+
+  if(site === 'de'){
+    // === 德站计算 ===
+    // 体积重
+    volWeight = (l * w * h) / VOL_FACTOR.de;
+    actualWeight = weightKg;
+    chargeWeight = Math.max(volWeight, actualWeight);
+
+    // 匹配尺寸分档：找最小的符合条件的档位
+    matchedTier = null;
+    for(const tier of fees.de){
+      if(longestCm <= tier.maxLong && medianCm <= tier.maxMed &&
+         shortestCm <= tier.maxShort && chargeWeight <= tier.maxWeight){
+        matchedTier = tier;
+        break;
+      }
+    }
+    // 兜底：最大档
+    if(!matchedTier && fees.de.length > 0){
+      matchedTier = fees.de[fees.de.length - 1];
+    }
+
+    const plan = document.getElementById('de_plan').value;
+    fbaFee = plan === 'cep' ? matchedTier.feeCEP : matchedTier.feeDE;
+    tierCategory = matchedTier.cat || (matchedTier.name.includes('信封') ? '信封' :
+                    matchedTier.name.includes('包裹') ? '包裹' :
+                    matchedTier.name.includes('大件') || matchedTier.name.includes('oversize') ? '超大件' : '');
+
+  } else {
+    // === 美站计算 ===
+    // 单位换算：cm → in, kg → lb
+    const longestIn = longestCm / 2.54;
+    const medianIn = medianCm / 2.54;
+    const shortestIn = shortestCm / 2.54;
+    const weightLb = weightKg * 2.20462;
+
+    // 体积重（in³ / 139）
+    volWeight = (longestIn * medianIn * shortestIn) / VOL_FACTOR.us;
+    actualWeight = weightLb;
+    chargeWeight = Math.max(volWeight, actualWeight);
+    weightUnit = 'lb';
+
+    // 先判断尺寸类型
+    let sizeType = 'xl';
+    if(longestIn <= US_SIZE_TIERS.small.long && medianIn <= US_SIZE_TIERS.small.med &&
+       shortestIn <= US_SIZE_TIERS.small.short){
+      sizeType = 'small';
+    } else if(longestIn <= US_SIZE_TIERS.large.long && medianIn <= US_SIZE_TIERS.large.med &&
+              shortestIn <= US_SIZE_TIERS.large.short){
+      sizeType = 'large';
+    } else if(longestIn <= US_SIZE_TIERS.bulkyS.long && medianIn <= US_SIZE_TIERS.bulkyS.med &&
+              shortestIn <= US_SIZE_TIERS.bulkyS.short){
+      sizeType = 'bulkyS';
+    } else if(longestIn <= US_SIZE_TIERS.bulkyL.long && medianIn <= US_SIZE_TIERS.bulkyL.med &&
+              shortestIn <= US_SIZE_TIERS.bulkyL.short){
+      sizeType = 'bulkyL';
+    }
+
+    // 在对应尺寸类型里找重量档位
+    const candidates = fees.us.filter(t => t.sizeType === sizeType);
+    matchedTier = candidates[candidates.length - 1] || null;
+    for(const tier of candidates){
+      if(chargeWeight <= tier.maxWeight){
+        matchedTier = tier;
+        break;
+      }
+    }
+    // 兜底：最后一档（XL）
+    if(!matchedTier){
+      const xl = fees.us.filter(t => t.sizeType === 'xl');
+      matchedTier = xl[xl.length - 1];
+    }
+
+    // 选价格档
+    const priceTier = document.getElementById('us_price_tier').value;
+    if(priceTier === 'low') fbaFee = matchedTier.feeLow;
+    else if(priceTier === 'high') fbaFee = matchedTier.feeHigh;
+    else fbaFee = matchedTier.feeMid;
+
+    tierCategory = sizeType === 'small' ? '小标准' :
+                   sizeType === 'large' ? '大标准' :
+                   sizeType === 'bulkyS' ? '小型大件' :
+                   sizeType === 'bulkyL' ? '大型大件' : '超大件';
+  }
+
+  // 佣金 & 费用
+  const commission = price * (commissionRate / 100);
+  const totalFee = fbaFee + commission;
+  const net = Math.max(0, price - totalFee);
+
+  // ====== 显示 ======
+  // 尺寸分档名称
+  let tierName = matchedTier.name;
+  if(matchedTier.cat) tierName = matchedTier.cat + ' · ' + tierName;
+  document.getElementById('r_tier').textContent = tierName;
+  document.getElementById('r_sizeType').textContent = tierCategory || '标准尺寸';
+
+  // 重量
+  document.getElementById('r_volWeight').textContent = volWeight.toFixed(2);
+  document.getElementById('r_chargeWeight').textContent = chargeWeight.toFixed(2);
+  document.getElementById('r_wunit').textContent = weightUnit;
+  document.getElementById('r_wunit2').textContent = weightUnit;
+
+  // 金额
+  document.getElementById('r_fee').textContent = fbaFee.toFixed(2);
+  document.getElementById('r_commission').textContent = commission.toFixed(2);
+  document.getElementById('r_totalFee').textContent = totalFee.toFixed(2);
+  document.getElementById('r_net').textContent = net.toFixed(2);
+
+  for(let i=1; i<=4; i++){
+    document.getElementById('r_currency' + (i===1?'':i)).textContent = currency;
+  }
+
+  // 信息提示
+  const info = document.getElementById('r_info');
+  if(l > 0 && w > 0 && h > 0 && weightKg > 0){
+    info.style.display = 'block';
+    const volBigger = volWeight > actualWeight;
+    const diff = Math.abs(volWeight - actualWeight).toFixed(2);
+    let tip = volBigger
+      ? `💡 按体积重计费 — 体积重 ${volWeight.toFixed(2)} ${weightUnit} > 实重 ${actualWeight.toFixed(2)} ${weightUnit}`
+      : `💡 按实重计费 — 实重 ${actualWeight.toFixed(2)} ${weightUnit} ≥ 体积重 ${volWeight.toFixed(2)} ${weightUnit}`;
+    tip += `<br>📐 尺寸（长×宽×高）：${longestCm} × ${medianCm} × ${shortestCm} cm → 匹配「${matchedTier.name}」`;
+    if(price > 0){
+      tip += `<br>📊 售价 ${price.toFixed(2)} ${currency}，平台抽成 ${commissionRate}% = ${commission.toFixed(2)} ${currency}，FBA配送费 ${fbaFee.toFixed(2)} ${currency}，到手 ${net.toFixed(2)} ${currency}`;
+    }
+    info.innerHTML = tip;
+  } else {
+    info.style.display = 'none';
+  }
+}
+
+// ========== 初始化 ==========
+loadFees();
+renderFeeTable('de');
+renderFeeTable('us');
+calc();
+
+// 智能切换美站售价区间（输入售价时自动判断）
+document.getElementById('p_price').addEventListener('input', function(){
+  if(currentSite !== 'us') return;
+  const price = parseFloat(this.value) || 0;
+  const sel = document.getElementById('us_price_tier');
+  if(price > 0 && price <= 10) sel.value = 'low';
+  else if(price > 10 && price <= 50) sel.value = 'mid';
+  else if(price > 50) sel.value = 'high';
+});
+</script>
+</body>
+</html>
