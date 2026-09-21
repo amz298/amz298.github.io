@@ -6,8 +6,8 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:system-ui,sans-serif;
-      display:grid;place-items:center;min-height:100vh;
-      color:#1e3328;position:relative;overflow:hidden;}
+      min-height:100vh;color:#1e3328;position:relative;
+      padding:40px 20px 60px;}
 
     /* 虚化背景 - 轻度 */
     body::before{
@@ -18,47 +18,137 @@
       filter:blur(4px) saturate(1.05) brightness(1.02);
       transform:scale(1.05);
     }
-    /* 绿色蒙版 - 薄 */
     body::after{
       content:"";position:fixed;inset:0;z-index:-1;
       background:linear-gradient(135deg,rgba(240,247,242,.30) 0%,rgba(220,240,228,.20) 100%);
     }
 
-    .wrap{text-align:center;padding:20px;}
-    h1{color:#2d8659;margin-bottom:30px;font-size:36px;
-      text-shadow:0 2px 12px rgba(255,255,255,.7);}
-    .tools{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
-    .tool{background:rgba(255,255,255,.82);backdrop-filter:blur(8px);
-      padding:30px 40px;border-radius:16px;text-decoration:none;
-      color:inherit;box-shadow:0 8px 32px rgba(0,60,30,.10);transition:.25s;
-      border:2px solid rgba(201,221,209,.6);min-width:220px;}
-    .tool:hover{transform:translateY(-5px);border-color:#2d8659;
-      box-shadow:0 12px 40px rgba(0,60,30,.16);}
-    .tool .ic{font-size:52px;margin-bottom:10px;}
-    .tool .n{font-size:20px;font-weight:700;color:#2d8659;}
-    .tool .d{font-size:13px;color:#4f6b5b;margin-top:6px;}
+    .wrap{max-width:1100px;margin:0 auto;}
+    h1{color:#2d8659;text-align:center;font-size:38px;
+      text-shadow:0 2px 12px rgba(255,255,255,.7);margin-bottom:8px;}
+    .sub{text-align:center;color:#4f6b5b;margin-bottom:40px;font-size:14px;}
+
+    .section{margin-bottom:32px;}
+    .section h2{
+      font-size:16px;color:#2d8659;margin-bottom:14px;
+      padding-left:12px;border-left:4px solid #2d8659;
+      text-shadow:0 1px 6px rgba(255,255,255,.8);
+    }
+
+    .tools{display:grid;gap:14px;
+      grid-template-columns:repeat(auto-fill,minmax(200px,1fr));}
+    .tool{background:rgba(255,255,255,.85);backdrop-filter:blur(8px);
+      padding:22px 20px;border-radius:14px;text-decoration:none;
+      color:inherit;box-shadow:0 4px 20px rgba(0,60,30,.08);transition:.25s;
+      border:1.5px solid rgba(201,221,209,.6);display:flex;align-items:center;gap:14px;}
+    .tool:hover{transform:translateY(-3px);border-color:#2d8659;
+      box-shadow:0 8px 28px rgba(0,60,30,.14);}
+    .tool .ic{font-size:32px;flex-shrink:0;}
+    .tool .txt{flex:1;min-width:0;}
+    .tool .n{font-size:15px;font-weight:700;color:#2d8659;margin-bottom:3px;}
+    .tool .d{font-size:12px;color:#6b8f7a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .tool .ext{font-size:10px;color:#999;margin-left:4px;}
+
+    footer{text-align:center;color:#6b8f7a;font-size:12px;margin-top:40px;opacity:.7;}
   </style>
   </head>
   <body>
   <div class="wrap">
     <h1>🛠️ 亚马逊运营工具箱</h1>
-    <div class="tools">
-      <a href="profit/" class="tool">
-        <div class="ic">💰</div>
-        <div class="n">利润计算器</div>
-        <div class="d">单SKU + 批量核算</div>
-      </a>
-      <a href="listing/" class="tool">
-        <div class="ic">📋</div>
-        <div class="n">Listing提取器</div>
-        <div class="d">德语文案自动提取</div>
-      </a>
-      <a href="ai-image-tagger/" class="tool">
-        <div class="ic">🏷️</div>
-        <div class="n">AI图片标记工具</div>
-        <div class="d">XMP批量打标 · GPSR合规</div>
-      </a>
+    <p class="sub">一个收藏夹，搞定日常运营</p>
+
+    <!-- 自有工具 -->
+    <div class="section">
+      <h2>🧰 自研工具</h2>
+      <div class="tools">
+        <a href="profit/" class="tool">
+          <div class="ic">💰</div>
+          <div class="txt">
+            <div class="n">利润计算器</div>
+            <div class="d">单SKU + 批量核算</div>
+          </div>
+        </a>
+        <a href="listing/" class="tool">
+          <div class="ic">📋</div>
+          <div class="txt">
+            <div class="n">Listing提取器</div>
+            <div class="d">德语文案自动提取</div>
+          </div>
+        </a>
+        <a href="ai-image-tagger/" class="tool">
+          <div class="ic">🏷️</div>
+          <div class="txt">
+            <div class="n">AI图片标记工具</div>
+            <div class="d">XMP批量打标 · GPSR合规</div>
+          </div>
+        </a>
+      </div>
     </div>
+
+    <!-- 选品运营 -->
+    <div class="section">
+      <h2>📊 选品 & 运营</h2>
+      <div class="tools">
+        <a href="https://www.sellersprite.com/v3/keyword-miner" target="_blank" class="tool">
+          <div class="ic">🔍</div>
+          <div class="txt">
+            <div class="n">卖家精灵 <span class="ext">↗</span></div>
+            <div class="d">关键词挖掘 · 选品分析</div>
+          </div>
+        </a>
+        <a href="https://www.amazon.com/?mr_donotredirect" target="_blank" class="tool">
+          <div class="ic">🇺🇸</div>
+          <div class="txt">
+            <div class="n">亚马逊美国站 <span class="ext">↗</span></div>
+            <div class="d">Amazon.com</div>
+          </div>
+        </a>
+        <a href="https://www.amazon.de/?mr_donotredirect" target="_blank" class="tool">
+          <div class="ic">🇩🇪</div>
+          <div class="txt">
+            <div class="n">亚马逊德国站 <span class="ext">↗</span></div>
+            <div class="d">Amazon.de</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 翻译设计 -->
+    <div class="section">
+      <h2>🎨 翻译 & 设计</h2>
+      <div class="tools">
+        <a href="https://www.deepl.com/translator" target="_blank" class="tool">
+          <div class="ic">🌐</div>
+          <div class="txt">
+            <div class="n">DeepL 翻译 <span class="ext">↗</span></div>
+            <div class="d">德语文案翻译</div>
+          </div>
+        </a>
+        <a href="https://translate.google.com" target="_blank" class="tool">
+          <div class="ic">🔤</div>
+          <div class="txt">
+            <div class="n">Google 翻译 <span class="ext">↗</span></div>
+            <div class="d">多语言快速翻译</div>
+          </div>
+        </a>
+        <a href="https://www.canva.com" target="_blank" class="tool">
+          <div class="ic">🎨</div>
+          <div class="txt">
+            <div class="n">Canva <span class="ext">↗</span></div>
+            <div class="d">主图/A+ 设计</div>
+          </div>
+        </a>
+        <a href="https://www.figma.com" target="_blank" class="tool">
+          <div class="ic">✏️</div>
+          <div class="txt">
+            <div class="n">Figma <span class="ext">↗</span></div>
+            <div class="d">UI/图片设计</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <footer>亚马逊运营工具箱 · 收藏你的日常工具</footer>
   </div>
   </body>
   </html>
