@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>体积重计算器 - 亚马逊运营工具箱</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:system-ui,"Microsoft YaHei",sans-serif;
+    min-height:100vh;color:#1e3328;position:relative;
+    padding:30px 20px 50px;background:#f0f7f2;}
+
+  /* 背景（和主页一致风格，可选虚化图） */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-2;
+    background:linear-gradient(135deg,#e8f4ec 0%,#d6ead9 100%);
+  }
+
+  .wrap{max-width:900px;margin:0 auto;}
+
+  /* 返回导航 */
+  .back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;
+    color:#2d8659;font-size:13px;font-weight:600;margin-bottom:16px;
+    padding:6px 12px;border-radius:8px;background:rgba(255,255,255,.7);
+    border:1px solid #c9ddd1;transition:.2s;}
+  .back:hover{background:#fff;border-color:#2d8659;}
+
+  h1{color:#2d8659;font-size:30px;margin-bottom:6px;}
+  .sub{color:#6b8f7a;margin-bottom:24px;font-size:14px;}
+
+  /* 模式切换 */
+  .tabs{display:flex;gap:6px;margin-bottom:20px;
+    background:rgba(255,255,255,.7);padding:6px;border-radius:12px;
+    border:1px solid #c9ddd1;backdrop-filter:blur(8px);width:fit-content;}
+  .tab{padding:8px 20px;border-radius:8px;cursor:pointer;
+    font-size:14px;font-weight:600;color:#4f6b5b;transition:.2s;
+    border:none;background:transparent;font-family:inherit;}
+  .tab.active{background:#2d8659;color:#fff;box-shadow:0 2px 8px rgba(45,134,89,.3);}
+  .tab:hover:not(.active){color:#2d8659;}
+
+  /* 卡片 */
+  .card{background:rgba(255,255,255,.9);backdrop-filter:blur(10px);
+    border-radius:18px;padding:24px;margin-bottom:20px;
+    border:1.5px solid #c9ddd1;box-shadow:0 4px 24px rgba(0,60,30,.06);}
+  .card h2{font-size:16px;color:#2d8659;margin-bottom:16px;
+    display:flex;align-items:center;gap:8px;}
+
+  /* 表单 */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;}
+  .field label{display:block;font-size:12px;color:#6b8f7a;font-weight:600;margin-bottom:6px;}
+  .field input, .field select{
+    width:100%;padding:10px 12px;border:1.5px solid #c9ddd1;border-radius:10px;
+    background:#fff;color:#1e3328;font-size:14px;font-family:inherit;transition:.2s;}
+  .field input:focus, .field select:focus{
+    outline:none;border-color:#2d8659;box-shadow:0 0 0 3px rgba(45,134,89,.12);}
+
+  /* 结果 */
+  .result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
+  .result-item{background:#f0f7f2;border-radius:12px;padding:16px;
+    border:1px solid #d6ead9;}
+  .result-item .label{font-size:12px;color:#6b8f7a;margin-bottom:4px;}
+  .result-item .value{font-size:22px;font-weight:800;color:#2d8659;}
+  .result-item .unit{font-size:12px;color:#6b8f7a;font-weight:500;}
+  .result-item.highlight{background:linear-gradient(135deg,#e8f8ec,#d1f0d8);
+    border-color:#2d8659;}
+  .result-item.highlight .value{color:#1a6b43;}
+
+  /* 按钮 */
+  .btn-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .btn{padding:10px 20px;border-radius:10px;border:none;cursor:pointer;
+    font-size:14px;font-weight:600;transition:.2s;font-family:inherit;
+    display:inline-flex;align-items:center;gap:6px;}
+  .btn.primary{background:#2d8659;color:#fff;box-shadow:0 2px 8px rgba(45,134,89,.3);}
+  .btn.primary:hover{filter:brightness(1.08);transform:translateY(-1px);}
+  .btn.secondary{background:#fff;color:#2d8659;border:1.5px solid #c9ddd1;}
+  .btn.secondary:hover{border-color:#2d8659;}
+  .btn.danger{background:#fff;color:#d64545;border:1.5px solid #f0c0c0;}
+  .btn.danger:hover{border-color:#d64545;background:#fef0f0;}
+
+  /* 批量表格 */
+  .batch-table{width:100%;border-collapse:separate;border-spacing:0;
+    font-size:13px;}
+  .batch-table th{background:#f0f7f2;color:#2d8659;font-weight:700;
+    padding:10px 12px;text-align:left;border-bottom:2px solid #d6ead9;
+    font-size:12px;}
+  .batch-table td{padding:8px 10px;border-bottom:1px solid #e8f0ea;}
+  .batch-table tr:last-child td{border-bottom:none;}
+  .batch-table input{
+    width:100%;padding:6px 8px;border:1px solid #d6ead9;border-radius:6px;
+    font-size:13px;font-family:inherit;background:#fafdfb;}
+  .batch-table input:focus{outline:none;border-color:#2d8659;background:#fff;}
+  .batch-table .num-col{width:40px;text-align:center;color:#999;font-size:12px;}
+  .batch-table .action-col{width:50px;text-align:center;}
+  .batch-table .del-btn{background:transparent;border:none;color:#d64545;
+    cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px;transition:.2s;}
+  .batch-table .del-btn:hover{background:#fde8e8;}
+  .table-wrap{max-height:380px;overflow-y:auto;border-radius:10px;
+    border:1px solid #d6ead9;}
+
+  /* 批量总计 */
+  .batch-total{margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+  .total-card{background:linear-gradient(135deg,#2d8659,#1a6b43);
+    color:#fff;padding:16px;border-radius:12px;}
+  .total-card .label{font-size:12px;opacity:.85;margin-bottom:4px;}
+  .total-card .value{font-size:24px;font-weight:800;}
+  .total-card .unit{font-size:12px;opacity:.7;}
+
+  /* 说明 */
+  .info-box{background:#fffbe6;border:1px solid #f0e0a0;border-radius:10px;
+    padding:12px 16px;font-size:12px;color:#8a6d1c;line-height:1.6;
+    margin-top:16px;}
+  .info-box b{color:#6b520f;}
+
+  /* 粘贴导入 */
+  .paste-area{margin-top:14px;}
+  .paste-area textarea{
+    width:100%;min-height:100px;padding:10px 12px;border:1.5px solid #c9ddd1;
+    border-radius:10px;font-family:monospace;font-size:12px;resize:vertical;
+    background:#fafdfb;color:#1e3328;}
+  .paste-area textarea:focus{outline:none;border-color:#2d8659;background:#fff;}
+  .paste-format{font-size:12px;color:#6b8f7a;margin-top:8px;line-height:1.6;}
+  .paste-format code{background:#e8f4ec;padding:2px 6px;border-radius:4px;color:#2d8659;font-size:11px;}
+
+  /* 模态框 */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);
+    display:none;align-items:center;justify-content:center;z-index:100;
+    backdrop-filter:blur(4px);}
+  .modal-overlay.active{display:flex;}
+  .modal{background:#fff;border-radius:16px;padding:24px;width:90%;max-width:520px;
+    box-shadow:0 20px 60px rgba(0,0,0,.2);}
+  .modal h3{color:#2d8659;margin-bottom:12px;font-size:18px;}
+  .modal .btn-row{margin-top:16px;justify-content:flex-end;}
+  .modal-close{float:right;background:none;border:none;font-size:20px;cursor:pointer;color:#999;}
+  .modal-close:hover{color:#333;}
+
+  footer{text-align:center;color:#8fb0a0;font-size:12px;margin-top:30px;}
+
+  @media(max-width:600px){
+    h1{font-size:24px;}
+    .form-grid{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a href="../" class="back">← 返回工具箱</a>
+  <h1>📦 体积重计算器</h1>
+  <p class="sub">输入尺寸和实重，自动计算体积重和计费重，支持单箱和批量多箱</p>
+
+  <!-- 模式切换 -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchMode('single')">单箱计算</button>
+    <button class="tab" onclick="switchMode('batch')">批量多箱</button>
+  </div>
+
+  <!-- 单箱模式 -->
+  <div id="singleMode">
+    <div class="card">
+      <h2>📏 输入参数</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label>长 (cm)</label>
+          <input type="number" id="s_length" placeholder="如 50" oninput="calcSingle()">
+        </div>
+        <div class="field">
+          <label>宽 (cm)</label>
+          <input type="number" id="s_width" placeholder="如 40" oninput="calcSingle()">
+        </div>
+        <div class="field">
+          <label>高 (cm)</label>
+          <input type="number" id="s_height" placeholder="如 30" oninput="calcSingle()">
+        </div>
+        <div class="field">
+          <label>实重 (kg)</label>
+          <input type="number" id="s_weight" placeholder="如 12" oninput="calcSingle()">
+        </div>
+        <div class="field">
+          <label>体积系数</label>
+          <select id="s_factor" onchange="calcSingle()">
+            <option value="5000">5000 (空运/快递常用)</option>
+            <option value="6000">6000 (部分物流)</option>
+            <option value="4000">4000 (部分专线)</option>
+            <option value="3000">3000 (体积偏大)</option>
+            <option value="custom">自定义</option>
+          </select>
+        </div>
+        <div class="field" id="s_customField" style="display:none;">
+          <label>自定义系数</label>
+          <input type="number" id="s_customFactor" placeholder="如 5000" oninput="calcSingle()">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🧮 计算结果</h2>
+      <div class="result-grid">
+        <div class="result-item">
+          <div class="label">体积</div>
+          <div class="value" id="r_volume">0</div>
+          <div class="unit">cm³</div>
+        </div>
+        <div class="result-item">
+          <div class="label">体积重</div>
+          <div class="value" id="r_volWeight">0</div>
+          <div class="unit">kg</div>
+        </div>
+        <div class="result-item">
+          <div class="label">实际重量</div>
+          <div class="value" id="r_actWeight">0</div>
+          <div class="unit">kg</div>
+        </div>
+        <div class="result-item highlight">
+          <div class="label">计费重（取大）</div>
+          <div class="value" id="r_chargeWeight">0</div>
+          <div class="unit">kg</div>
+        </div>
+      </div>
+      <div class="info-box" id="s_info" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- 批量模式 -->
+  <div id="batchMode" style="display:none;">
+    <div class="card">
+      <h2>📦 多箱列表</h2>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="field">
+          <label>体积系数</label>
+          <select id="b_factor" onchange="calcBatch()">
+            <option value="5000">5000 (空运/快递常用)</option>
+            <option value="6000">6000 (部分物流)</option>
+            <option value="4000">4000 (部分专线)</option>
+            <option value="3000">3000 (体积偏大)</option>
+            <option value="custom">自定义</option>
+          </select>
+        </div>
+        <div class="field" id="b_customField" style="display:none;">
+          <label>自定义系数</label>
+          <input type="number" id="b_customFactor" placeholder="如 5000" oninput="calcBatch()">
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="batch-table" id="batchTable">
+          <thead>
+            <tr>
+              <th class="num-col">#</th>
+              <th>长 (cm)</th>
+              <th>宽 (cm)</th>
+              <th>高 (cm)</th>
+              <th>实重 (kg)</th>
+              <th>体积重 (kg)</th>
+              <th>计费重 (kg)</th>
+              <th class="action-col"></th>
+            </tr>
+          </thead>
+          <tbody id="batchBody"></tbody>
+        </table>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn primary" onclick="addRow()">+ 添加一箱</button>
+        <button class="btn secondary" onclick="addMultiRow()">+ 批量添加</button>
+        <button class="btn secondary" onclick="openPasteModal()">📋 粘贴导入</button>
+        <button class="btn danger" onclick="clearAllRows()">清空全部</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 总计</h2>
+      <div class="batch-total">
+        <div class="total-card">
+          <div class="label">箱数</div>
+          <div class="value" id="t_count">0</div>
+          <div class="unit">箱</div>
+        </div>
+        <div class="total-card">
+          <div class="label">总体积重</div>
+          <div class="value" id="t_volWeight">0</div>
+          <div class="unit">kg</div>
+        </div>
+        <div class="total-card">
+          <div class="label">总实重</div>
+          <div class="value" id="t_actWeight">0</div>
+          <div class="unit">kg</div>
+        </div>
+        <div class="total-card" style="background:linear-gradient(135deg,#d64545,#b23030);">
+          <div class="label">总计费重</div>
+          <div class="value" id="t_chargeWeight">0</div>
+          <div class="unit">kg</div>
+        </div>
+      </div>
+      <div class="info-box" id="b_info" style="display:none;"></div>
+    </div>
+  </div>
+
+  <footer>亚马逊运营工具箱 · 体积重计算器</footer>
+</div>
+
+<!-- 粘贴导入模态框 -->
+<div class="modal-overlay" id="pasteModal">
+  <div class="modal">
+    <h3>📋 粘贴批量导入
+      <button class="modal-close" onclick="closePasteModal()">×</button>
+    </h3>
+    <div class="paste-area">
+      <textarea id="pasteInput" placeholder="粘贴数据，支持以下格式：
+
+【行格式】每行一箱：长 宽 高 实重
+50 40 30 12
+51 41 42 15
+
+【列格式】每列一箱，每行一个维度：
+22.6 22.6 22.6 ...  ← 实重
+51   51   51  ...  ← 长
+41   41   41  ...  ← 宽
+42   42   42  ...  ← 高"></textarea>
+      <div class="paste-format">
+        💡 支持 <code>空格</code> <code>Tab</code> <code>逗号</code> <code>换行</code> 分隔
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding:12px;background:#f0f7f2;border-radius:10px;border:1px solid #d6ead9;">
+      <div style="font-size:13px;font-weight:600;color:#2d8659;margin-bottom:8px;">🔧 列/行顺序设置</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div style="font-size:12px;color:#4f6b5b;">第1行:</div>
+        <select id="order0" style="padding:6px 10px;border:1px solid #c9ddd1;border-radius:6px;font-size:12px;">
+          <option value="l">长</option>
+          <option value="w">宽</option>
+          <option value="h">高</option>
+          <option value="wt" selected>实重</option>
+          <option value="skip">跳过</option>
+        </select>
+        <div style="font-size:12px;color:#4f6b5b;">第2行:</div>
+        <select id="order1" style="padding:6px 10px;border:1px solid #c9ddd1;border-radius:6px;font-size:12px;">
+          <option value="l" selected>长</option>
+          <option value="w">宽</option>
+          <option value="h">高</option>
+          <option value="wt">实重</option>
+          <option value="skip">跳过</option>
+        </select>
+        <div style="font-size:12px;color:#4f6b5b;">第3行:</div>
+        <select id="order2" style="padding:6px 10px;border:1px solid #c9ddd1;border-radius:6px;font-size:12px;">
+          <option value="l">长</option>
+          <option value="w" selected>宽</option>
+          <option value="h">高</option>
+          <option value="wt">实重</option>
+          <option value="skip">跳过</option>
+        </select>
+        <div style="font-size:12px;color:#4f6b5b;">第4行:</div>
+        <select id="order3" style="padding:6px 10px;border:1px solid #c9ddd1;border-radius:6px;font-size:12px;">
+          <option value="l">长</option>
+          <option value="w">宽</option>
+          <option value="h" selected>高</option>
+          <option value="wt">实重</option>
+          <option value="skip">跳过</option>
+        </select>
+      </div>
+      <div style="font-size:11px;color:#8fb0a0;margin-top:8px;">
+        💡 列格式（每行数字很多）时，用这里设置每一行代表什么。行格式（每行4个数）不受影响。
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#4f6b5b;flex:1;">
+        <input type="checkbox" id="pasteAppend"> 追加到现有数据
+      </label>
+      <button class="btn secondary" onclick="closePasteModal()">取消</button>
+      <button class="btn primary" onclick="doPasteImport()">导入</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ========== 模式切换 ==========
+  function switchMode(mode){
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    if(mode === 'single'){
+      document.querySelector('.tab:first-child').classList.add('active');
+      document.getElementById('singleMode').style.display = 'block';
+      document.getElementById('batchMode').style.display = 'none';
+    } else {
+      document.querySelector('.tab:last-child').classList.add('active');
+      document.getElementById('singleMode').style.display = 'none';
+      document.getElementById('batchMode').style.display = 'block';
+      if(batchRows.length === 0) addRow(); // 初始化一行
+    }
+  }
+
+  // ========== 系数处理 ==========
+  function getFactor(mode){
+    const select = document.getElementById(mode + '_factor');
+    if(select.value === 'custom'){
+      const v = parseFloat(document.getElementById(mode + '_customFactor').value);
+      return v && v > 0 ? v : 5000;
+    }
+    return parseFloat(select.value);
+  }
+
+  function onFactorChange(mode){
+    const customField = document.getElementById(mode + '_customField');
+    const select = document.getElementById(mode + '_factor');
+    customField.style.display = select.value === 'custom' ? 'block' : 'none';
+  }
+
+  document.getElementById('s_factor').addEventListener('change', () => {
+    onFactorChange('s');
+    calcSingle();
+  });
+  document.getElementById('b_factor').addEventListener('change', () => {
+    onFactorChange('b');
+    calcBatch();
+  });
+
+  // ========== 单箱计算 ==========
+  function calcSingle(){
+    const l = parseFloat(document.getElementById('s_length').value) || 0;
+    const w = parseFloat(document.getElementById('s_width').value) || 0;
+    const h = parseFloat(document.getElementById('s_height').value) || 0;
+    const wt = parseFloat(document.getElementById('s_weight').value) || 0;
+    const factor = getFactor('s');
+
+    const volume = l * w * h;
+    const volWeight = volume / factor;
+    const chargeWeight = Math.max(volWeight, wt);
+
+    document.getElementById('r_volume').textContent = volume.toFixed(0);
+    document.getElementById('r_volWeight').textContent = volWeight.toFixed(2);
+    document.getElementById('r_actWeight').textContent = wt.toFixed(2);
+    document.getElementById('r_chargeWeight').textContent = chargeWeight.toFixed(2);
+
+    // 提示信息
+    const info = document.getElementById('s_info');
+    if(l > 0 && w > 0 && h > 0 && wt > 0){
+      const isVol = volWeight > wt;
+      const diff = Math.abs(volWeight - wt).toFixed(2);
+      info.style.display = 'block';
+      info.innerHTML = isVol
+        ? `<b>💡 按体积重计费</b> — 体积重 ${volWeight.toFixed(2)} kg > 实重 ${wt.toFixed(2)} kg，多 ${diff} kg`
+        : `<b>💡 按实重计费</b> — 实重 ${wt.toFixed(2)} kg ≥ 体积重 ${volWeight.toFixed(2)} kg，省 ${diff} kg`;
+    } else {
+      info.style.display = 'none';
+    }
+  }
+
+  // ========== 批量计算 ==========
+  let batchRows = [];
+  let rowIdCounter = 0;
+
+  function addRow(l='', w='', h='', wt=''){
+    const id = ++rowIdCounter;
+    batchRows.push({id, l, w, h, wt});
+    renderBatch();
+    calcBatch();
+  }
+
+  function addMultiRow(){
+    const n = prompt('要添加多少箱？', '5');
+    if(n === null) return;
+    const num = parseInt(n);
+    if(isNaN(num) || num < 1 || num > 100){
+      alert('请输入 1-100 之间的数字');
+      return;
+    }
+    for(let i=0; i<num; i++) addRow();
+  }
+
+  function removeRow(id){
+    batchRows = batchRows.filter(r => r.id !== id);
+    renderBatch();
+    calcBatch();
+  }
+
+  function clearAllRows(){
+    if(batchRows.length === 0) return;
+    if(!confirm('确定清空所有箱数吗？')) return;
+    batchRows = [];
+    renderBatch();
+    calcBatch();
+  }
+
+  function updateRow(id, field, value){
+    const row = batchRows.find(r => r.id === id);
+    if(row){
+      row[field] = value;
+      calcBatch();
+    }
+  }
+
+  function renderBatch(){
+    const tbody = document.getElementById('batchBody');
+    tbody.innerHTML = '';
+    batchRows.forEach((row, idx) => {
+      const tr = document.createElement('tr');
+      const l = parseFloat(row.l) || 0;
+      const w = parseFloat(row.w) || 0;
+      const h = parseFloat(row.h) || 0;
+      const wt = parseFloat(row.wt) || 0;
+      const factor = getFactor('b');
+      const volWeight = (l * w * h) / factor;
+      const charge = Math.max(volWeight, wt);
+      const chargeText = (l > 0 && w > 0 && h > 0) ? charge.toFixed(2) : '—';
+      const volText = (l > 0 && w > 0 && h > 0) ? volWeight.toFixed(2) : '—';
+
+      tr.innerHTML = `
+        <td class="num-col">${idx + 1}</td>
+        <td><input type="number" value="${row.l}" oninput="updateRow(${row.id},'l',this.value)" placeholder="长"></td>
+        <td><input type="number" value="${row.w}" oninput="updateRow(${row.id},'w',this.value)" placeholder="宽"></td>
+        <td><input type="number" value="${row.h}" oninput="updateRow(${row.id},'h',this.value)" placeholder="高"></td>
+        <td><input type="number" value="${row.wt}" oninput="updateRow(${row.id},'wt',this.value)" placeholder="实重"></td>
+        <td style="color:#6b8f7a;font-family:monospace;">${volText}</td>
+        <td style="font-weight:700;color:#2d8659;font-family:monospace;">${chargeText}</td>
+        <td class="action-col"><button class="del-btn" onclick="removeRow(${row.id})" title="删除">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function calcBatch(){
+    const factor = getFactor('b');
+    let totalVol = 0, totalAct = 0, totalCharge = 0;
+    let filled = 0;
+
+    batchRows.forEach(row => {
+      const l = parseFloat(row.l) || 0;
+      const w = parseFloat(row.w) || 0;
+      const h = parseFloat(row.h) || 0;
+      const wt = parseFloat(row.wt) || 0;
+      if(l > 0 && w > 0 && h > 0){
+        const volWeight = (l * w * h) / factor;
+        totalVol += volWeight;
+        totalAct += wt;
+        totalCharge += Math.max(volWeight, wt);
+        filled++;
+      }
+    });
+
+    document.getElementById('t_count').textContent = batchRows.length;
+    document.getElementById('t_volWeight').textContent = totalVol.toFixed(2);
+    document.getElementById('t_actWeight').textContent = totalAct.toFixed(2);
+    document.getElementById('t_chargeWeight').textContent = totalCharge.toFixed(2);
+
+    // 提示
+    const info = document.getElementById('b_info');
+    if(filled > 0){
+      info.style.display = 'block';
+      const diff = Math.abs(totalVol - totalAct).toFixed(2);
+      if(totalVol > totalAct){
+        info.innerHTML = `<b>💡 按体积重计费</b> — ${filled} 箱已填写，总体积重比实重重 ${diff} kg`;
+      } else if(totalAct > totalVol){
+        info.innerHTML = `<b>💡 按实重计费</b> — ${filled} 箱已填写，总实重比体积重重 ${diff} kg`;
+      } else {
+        info.innerHTML = `<b>💡 体积重 = 实重</b> — ${filled} 箱已填写`;
+      }
+    } else {
+      info.style.display = 'none';
+    }
+
+    // 同步重新渲染表格（因为系数变了）
+    renderBatch();
+  }
+
+  // ========== 粘贴导入 ==========
+  function openPasteModal(){
+    document.getElementById('pasteModal').classList.add('active');
+    document.getElementById('pasteInput').value = '';
+    setTimeout(() => document.getElementById('pasteInput').focus(), 50);
+  }
+
+  function closePasteModal(){
+    document.getElementById('pasteModal').classList.remove('active');
+  }
+
+  // 点击遮罩关闭
+  document.getElementById('pasteModal').addEventListener('click', function(e){
+    if(e.target === this) closePasteModal();
+  });
+
+  function doPasteImport(){
+    const text = document.getElementById('pasteInput').value.trim();
+    if(!text){ alert('请先粘贴数据'); return; }
+
+    const rows = parsePasteData(text);
+    if(rows.length === 0){
+      alert('未识别到有效数据，请检查格式');
+      return;
+    }
+
+    const append = document.getElementById('pasteAppend').checked;
+    if(!append) batchRows = [];
+
+    rows.forEach(r => addRow(r.l, r.w, r.h, r.wt));
+
+    closePasteModal();
+    alert(`成功导入 ${rows.length} 箱数据`);
+  }
+
+  function parsePasteData(text){
+    // 把所有分隔符（空格、Tab、逗号、中文逗号、换行）统一处理
+    // 先按行分割
+    const lines = text.split(/[\r\n]+/).map(l => l.trim()).filter(l => l.length > 0);
+    if(lines.length === 0) return [];
+
+    // 每行解析出数字数组
+    const lineNums = lines.map(line => {
+      return line.split(/[\s,\t]+/).map(s => parseFloat(s)).filter(n => !isNaN(n));
+    }).filter(arr => arr.length > 0);
+
+    if(lineNums.length === 0) return [];
+
+    // 找出每行数字个数的众数，判断格式
+    const colCounts = {};
+    lineNums.forEach(arr => {
+      const n = arr.length;
+      colCounts[n] = (colCounts[n] || 0) + 1;
+    });
+    const maxCols = Math.max(...Object.keys(colCounts).map(Number));
+    const rowCount = lineNums.length;
+
+    // 格式判断：
+    // 情况 A：每行 2~4 个数字 → 行格式：每行一箱（长 宽 高 实重）
+    // 情况 B：每行很多数字(≥5)，行数 2~5 → 列格式：每一行是一个维度
+
+    let rows = [];
+
+    // 情况 B 检测：列格式
+    if(rowCount >= 2 && rowCount <= 5 && maxCols >= 5){
+      // 读取用户设置的每行对应字段
+      const order = [];
+      for(let i=0; i<4; i++){
+        order.push(document.getElementById('order' + i).value);
+      }
+
+      const boxCount = Math.min(...lineNums.map(a => a.length));
+      for(let i=0; i<boxCount; i++){
+        const row = {l:0, w:0, h:0, wt:0};
+        for(let r=0; r<Math.min(lineNums.length, 4); r++){
+          const field = order[r];
+          if(field === 'skip') continue;
+          if(row.hasOwnProperty(field)){
+            row[field] = lineNums[r][i] || 0;
+          }
+        }
+        rows.push(row);
+      }
+    } else {
+      // 情况 A：行格式，每行一箱（长 宽 高 重）
+      lineNums.forEach(arr => {
+        if(arr.length >= 3){
+          rows.push({
+            l: arr[0] || 0,
+            w: arr[1] || 0,
+            h: arr[2] || 0,
+            wt: arr[3] || 0,
+          });
+        }
+      });
+    }
+
+    // 过滤掉长宽高全为 0 的
+    rows = rows.filter(r => r.l > 0 && r.w > 0 && r.h > 0);
+    return rows;
+  }
+
+  // 快捷键：Ctrl+V 在批量模式下直接打开粘贴框
+  document.addEventListener('keydown', function(e){
+    if((e.ctrlKey || e.metaKey) && e.key === 'v'){
+      // 如果焦点不在输入框，且批量模式可见，打开粘贴导入
+      const activeTag = document.activeElement.tagName;
+      if(activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT'){
+        const batchMode = document.getElementById('batchMode');
+        if(batchMode.style.display !== 'none'){
+          e.preventDefault();
+          openPasteModal();
+          // 从剪贴板读取（需要权限，能读就读，不能读让用户手动贴）
+          if(navigator.clipboard && navigator.clipboard.readText){
+            navigator.clipboard.readText().then(txt => {
+              if(txt) document.getElementById('pasteInput').value = txt;
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+    if(e.key === 'Escape'){
+      closePasteModal();
+    }
+  });
+</script>
+</body>
+</html>
