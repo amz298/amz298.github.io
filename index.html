@@ -1,5 +1,5 @@
- <!DOCTYPE html>
- <html>
+<!DOCTYPE html>
+  <html>
   <head>
   <meta charset="UTF-8">
   <title>亚马逊运营工具箱</title>
@@ -9,32 +9,31 @@
       display:grid;place-items:center;min-height:100vh;
       color:#1e3328;position:relative;overflow:hidden;}
 
-    /* 虚化背景 */
+    /* 虚化背景 - 轻度 */
     body::before{
       content:"";position:fixed;inset:-20px;z-index:-2;
       background-image:url("bg.jpg");
       background-size:cover;
       background-position:center;
-      filter:blur(12px) saturate(1.1) brightness(1.05);
+      filter:blur(4px) saturate(1.05) brightness(1.02);
       transform:scale(1.05);
     }
-    /* 绿色蒙版，保证文字清晰 */
+    /* 绿色蒙版 - 薄 */
     body::after{
       content:"";position:fixed;inset:0;z-index:-1;
-      background:linear-gradient(135deg,rgba(240,247,242,.75) 0%,rgba(220,240,228,.65) 100%);
-      backdrop-filter:blur(2px);
+      background:linear-gradient(135deg,rgba(240,247,242,.30) 0%,rgba(220,240,228,.20) 100%);
     }
 
     .wrap{text-align:center;padding:20px;}
     h1{color:#2d8659;margin-bottom:30px;font-size:36px;
-      text-shadow:0 2px 12px rgba(255,255,255,.6);}
+      text-shadow:0 2px 12px rgba(255,255,255,.7);}
     .tools{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
-    .tool{background:rgba(255,255,255,.85);backdrop-filter:blur(10px);
+    .tool{background:rgba(255,255,255,.82);backdrop-filter:blur(8px);
       padding:30px 40px;border-radius:16px;text-decoration:none;
-      color:inherit;box-shadow:0 8px 32px rgba(0,60,30,.12);transition:.25s;
-      border:2px solid rgba(201,221,209,.7);min-width:220px;}
+      color:inherit;box-shadow:0 8px 32px rgba(0,60,30,.10);transition:.25s;
+      border:2px solid rgba(201,221,209,.6);min-width:220px;}
     .tool:hover{transform:translateY(-5px);border-color:#2d8659;
-      box-shadow:0 12px 40px rgba(0,60,30,.18);}
+      box-shadow:0 12px 40px rgba(0,60,30,.16);}
     .tool .ic{font-size:52px;margin-bottom:10px;}
     .tool .n{font-size:20px;font-weight:700;color:#2d8659;}
     .tool .d{font-size:13px;color:#4f6b5b;margin-top:6px;}
