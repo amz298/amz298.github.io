@@ -1,21 +1,43 @@
  <!DOCTYPE html>
-  <html>
+ <html>
   <head>
   <meta charset="UTF-8">
   <title>亚马逊运营工具箱</title>
   <style>
-    body{font-family:system-ui,sans-serif;background:#f0f7f2;display:grid;
-      place-items:center;min-height:100vh;margin:0;color:#1e3328;}
-    .wrap{text-align:center;}
-    h1{color:#2d8659;margin-bottom:30px;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:system-ui,sans-serif;
+      display:grid;place-items:center;min-height:100vh;
+      color:#1e3328;position:relative;overflow:hidden;}
+
+    /* 虚化背景 */
+    body::before{
+      content:"";position:fixed;inset:-20px;z-index:-2;
+      background-image:url("bg.jpg");
+      background-size:cover;
+      background-position:center;
+      filter:blur(12px) saturate(1.1) brightness(1.05);
+      transform:scale(1.05);
+    }
+    /* 绿色蒙版，保证文字清晰 */
+    body::after{
+      content:"";position:fixed;inset:0;z-index:-1;
+      background:linear-gradient(135deg,rgba(240,247,242,.75) 0%,rgba(220,240,228,.65) 100%);
+      backdrop-filter:blur(2px);
+    }
+
+    .wrap{text-align:center;padding:20px;}
+    h1{color:#2d8659;margin-bottom:30px;font-size:36px;
+      text-shadow:0 2px 12px rgba(255,255,255,.6);}
     .tools{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
-    .tool{background:#fff;padding:30px 40px;border-radius:16px;text-decoration:none;
-      color:inherit;box-shadow:0 4px 15px rgba(0,0,0,.06);transition:.2s;
-      border:2px solid #c9ddd1;min-width:200px;}
-    .tool:hover{transform:translateY(-4px);border-color:#2d8659;}
-    .tool .ic{font-size:48px;margin-bottom:10px;}
-    .tool .n{font-size:18px;font-weight:700;color:#2d8659;}
-    .tool .d{font-size:13px;color:#4f6b5b;margin-top:5px;}
+    .tool{background:rgba(255,255,255,.85);backdrop-filter:blur(10px);
+      padding:30px 40px;border-radius:16px;text-decoration:none;
+      color:inherit;box-shadow:0 8px 32px rgba(0,60,30,.12);transition:.25s;
+      border:2px solid rgba(201,221,209,.7);min-width:220px;}
+    .tool:hover{transform:translateY(-5px);border-color:#2d8659;
+      box-shadow:0 12px 40px rgba(0,60,30,.18);}
+    .tool .ic{font-size:52px;margin-bottom:10px;}
+    .tool .n{font-size:20px;font-weight:700;color:#2d8659;}
+    .tool .d{font-size:13px;color:#4f6b5b;margin-top:6px;}
   </style>
   </head>
   <body>
@@ -33,9 +55,9 @@
         <div class="d">德语文案自动提取</div>
       </a>
       <a href="ai-image-tagger/" class="tool">
-          <div class="ic">🏷️</div>
-          <div class="n">AI图片标记工具</div>
-          <div class="d">XMP批量打标 · GPSR合规</div>
+        <div class="ic">🏷️</div>
+        <div class="n">AI图片标记工具</div>
+        <div class="d">XMP批量打标 · GPSR合规</div>
       </a>
     </div>
   </div>
