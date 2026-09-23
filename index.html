@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>亚马逊运营工具箱</title>
+<meta name="description" content="自研工具 + 精选外部资源：利润计算、FBA 运费、Listing 提取、选品运营、图片设计，一站式亚马逊运营工具箱。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='10' y='55' width='18' height='35' rx='4' fill='%232d8659'/%3E%3Crect x='41' y='20' width='18' height='70' rx='4' fill='%233ea471'/%3E%3Crect x='72' y='40' width='18' height='50' rx='4' fill='%235fcaa0'/%3E%3Cpath d='M20 12l8-8 8 8z' fill='%233ea471'/%3E%3Cpath d='M51 12l8-8 8 8z' fill='%235fcaa0'/%3E%3C/svg%3E">
 <style>
   :root{
     --text:#1e3328; --muted:#56705f; --accent:#2d8659; --accent-soft:rgba(45,134,89,.10);
@@ -23,7 +25,6 @@
     --bg-a:#13231a; --bg-b:#0e1c14; --bg-c:#173024;
   }
 
-  /* 背景色调预设：抹茶 / 青瓷（薄荷为默认） */
   [data-tint="matcha"]{ --tint-a:rgba(186,215,180,.44); --tint-b:rgba(150,198,162,.36); }
   [data-tint="matcha"][data-theme="dark"]{ --tint-a:rgba(16,28,18,.62); --tint-b:rgba(20,34,22,.52); }
   [data-tint="celadon"]{ --tint-a:rgba(188,228,220,.46); --tint-b:rgba(150,208,205,.36); }
@@ -34,17 +35,11 @@
   body{
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
     min-height:100vh;color:var(--text);line-height:1.6;
-    background:linear-gradient(180deg,var(--bg-b),var(--bg-b)); /* bg.jpg 未加载时的兜底 */
+    background:linear-gradient(180deg,var(--bg-b),var(--bg-b));
     padding-top:64px;
     -webkit-font-smoothing:antialiased;
   }
-  /* 渐变文字工具类 */
-  .grad-text{
-    background:linear-gradient(135deg,#2d8659 0%,#4ec27c 40%,#7ed6a8 80%,#28a9a0 100%);
-    -webkit-background-clip:text;background-clip:text;
-    -webkit-text-fill-color:transparent;
-  }
-  /* ===== 背景轮播（原背景图 bg.jpg 与多图淡入淡出） ===== */
+
   #bg{position:fixed;left:0;right:0;top:0;height:120vh;z-index:-2;overflow:hidden;pointer-events:none;will-change:transform;}
   .bg-slide{
     position:absolute;inset:-20px;background-size:cover;background-position:center;
@@ -52,13 +47,11 @@
     opacity:0;transition:opacity 1.8s ease-in-out;
   }
   .bg-slide.active{opacity:1;}
-  /* 背景图上的遮罩层（浅色提亮 / 深色压暗） */
   body::after{
     content:"";position:fixed;inset:0;z-index:-1;
     background:var(--overlay);
   }
 
-  /* ===== 吸顶栏 ===== */
   .topbar{
     position:fixed;top:0;left:0;right:0;z-index:50;
     background:transparent;border-bottom:1px solid transparent;
@@ -71,30 +64,7 @@
     border-bottom:1px solid var(--card-border);
   }
   .topbar .brand{font-weight:800;font-size:15px;color:var(--accent);white-space:nowrap;}
-  .topbar .brand .dot{opacity:.7;font-weight:400;}
-  .search{
-    flex:1 1 auto;max-width:460px;margin:0 auto;position:relative;
-  }
-  .search input{
-    width:100%;padding:9px 14px 9px 36px;border-radius:10px;
-    border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);
-    font-size:14px;outline:none;transition:.2s;
-  }
-  .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
-  .search .mag{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.45;font-size:14px;pointer-events:none;}
-  .search .kbd{
-    position:absolute;right:10px;top:50%;transform:translateY(-50%);
-    font-size:11px;color:var(--muted);border:1px solid var(--card-border);
-    border-radius:5px;padding:1px 6px;opacity:.6;background:var(--card-bg);
-  }
-  .iconbtn{
-    cursor:pointer;border:1px solid var(--card-border);background:var(--card-bg);
-    color:var(--text);width:38px;height:38px;border-radius:10px;font-size:17px;
-    display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0;
-  }
-  .iconbtn:hover{border-color:var(--accent);color:var(--accent);}
-
-  /* 顶栏小搜索框（左上角） */
+  .brand svg{vertical-align:-3px;margin-right:4px;}
   .search-sm{position:relative;width:230px;max-width:34vw;}
   .search-sm input{
     width:100%;padding:7px 12px 7px 30px;border-radius:10px;
@@ -103,10 +73,15 @@
   }
   .search-sm input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
   .search-sm .mag{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.45;font-size:13px;pointer-events:none;}
+  .iconbtn{
+    cursor:pointer;border:1px solid var(--card-border);background:var(--card-bg);
+    color:var(--text);width:38px;height:38px;border-radius:10px;font-size:17px;
+    display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0;
+  }
+  .iconbtn:hover{border-color:var(--accent);color:var(--accent);}
 
   .wrap{max-width:1120px;margin:0 auto;padding:26px 20px 70px;position:relative;z-index:1;}
 
-  /* ===== 头部（即梦风格大首屏） ===== */
   .hero{text-align:center;padding:36px 0 10px;}
   .hero .tag{
     display:inline-flex;align-items:center;gap:6px;
@@ -114,55 +89,13 @@
     border:1px solid var(--card-border);border-radius:999px;
     padding:5px 14px;margin-bottom:18px;font-weight:500;
   }
-  .hero h1{
-    font-size:clamp(30px,5.5vw,52px);font-weight:800;letter-spacing:1px;
-    line-height:1.2;margin-bottom:12px;
-  }
+  .hero h1{font-size:clamp(30px,5.5vw,52px);font-weight:800;letter-spacing:1px;line-height:1.2;margin-bottom:12px;}
   .hero h1 .g{
     background:linear-gradient(135deg,#2d8659 0%,#3ea471 30%,#5fcaa0 60%,#2ba29c 100%);
     -webkit-background-clip:text;background-clip:text;
     -webkit-text-fill-color:transparent;
   }
-  .hero .sub{
-    color:var(--muted);font-size:16px;margin-bottom:28px;font-weight:400;
-  }
-  .hero .stats{display:flex;justify-content:center;gap:12px;margin-top:24px;flex-wrap:wrap;}
-  .hero .stats span{
-    font-size:13px;color:var(--muted);background:var(--card-bg);
-    border:1px solid var(--card-border);border-radius:12px;
-    padding:10px 18px;backdrop-filter:blur(8px);
-    font-weight:500;
-  }
-  .hero .stats b{color:var(--accent);font-weight:700;font-size:16px;margin-right:4px;}
-
-  /* ===== 首屏大搜索框 ===== */
-  .hero-search{
-    max-width:620px;margin:0 auto;position:relative;
-  }
-  .hero-search .icon{
-    position:absolute;left:20px;top:50%;transform:translateY(-50%);
-    font-size:20px;opacity:.5;pointer-events:none;
-  }
-  .hero-search input{
-    width:100%;padding:18px 56px 18px 56px;
-    font-size:16px;border-radius:16px;
-    background:var(--card-bg);backdrop-filter:blur(16px) saturate(1.4);
-    border:1.5px solid var(--card-border);color:var(--text);
-    box-shadow:0 8px 32px rgba(45,134,89,.12),0 2px 8px rgba(0,0,0,.04);
-    outline:none;transition:.25s;font-weight:500;
-  }
-  .hero-search input:focus{
-    border-color:var(--accent);
-    box-shadow:0 0 0 4px var(--accent-soft),0 12px 40px rgba(45,134,89,.18);
-  }
-  .hero-search .kbd{
-    position:absolute;right:16px;top:50%;transform:translateY(-50%);
-    font-size:12px;color:var(--muted);background:var(--card2-bg,var(--card-bg));
-    border:1px solid var(--card-border);border-radius:8px;padding:4px 10px;
-    opacity:.7;
-  }
-
-  /* ===== 分类筛选 ===== */
+  
   .pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:28px 0 36px;}
   .pill{
     cursor:pointer;padding:10px 20px;border-radius:999px;font-size:14px;font-weight:500;
@@ -178,7 +111,6 @@
     box-shadow:0 4px 16px rgba(45,134,89,.35);
   }
 
-  /* ===== 最近使用 ===== */
   .recent{margin-bottom:30px;display:none;}
   .recent.show{display:block;}
   .recent h2{font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600;display:flex;align-items:center;gap:6px;}
@@ -190,12 +122,8 @@
   }
   .recent a:hover{border-color:var(--accent);transform:translateY(-2px);}
 
-  /* ===== 分区 ===== */
   .section{margin-bottom:42px;}
-  .section h2{
-    font-size:18px;color:var(--text);font-weight:700;margin-bottom:16px;
-    display:flex;align-items:center;gap:10px;
-  }
+  .section h2{font-size:18px;color:var(--text);font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
   .section h2 .ico{font-size:22px;}
   .section h2 .cnt{
     font-size:12px;font-weight:500;color:var(--accent);background:var(--accent-soft);
@@ -228,19 +156,14 @@
     opacity:1;
   }
   .tool:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
-  .tool .ic{
-    font-size:34px;flex-shrink:0;line-height:1;
-    transition:.3s;
-  }
+  .tool .ic{font-size:34px;flex-shrink:0;line-height:1;transition:.3s;}
   .tool:hover .ic{transform:scale(1.12) rotate(-4deg);}
   .tool .txt{flex:1;min-width:0;}
   .tool .n{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:5px;}
   .tool:hover .n{color:var(--accent);}
   .tool .d{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;}
   .tool .ext{font-size:10px;color:var(--muted);opacity:.5;margin-left:4px;}
-  .tool[data-hidden=“1”]{display:none;}
 
-  /* ===== 卡片错峰入场动画 ===== */
   .tool{opacity:0;}
   .tool.rise{animation:riseIn .6s cubic-bezier(.2,.7,.3,1) forwards;}
   @keyframes riseIn{
@@ -260,8 +183,11 @@
     border-radius:999px;padding:10px 22px;backdrop-filter:blur(8px);
   }
 
-  /* ===== 落樱花动画 ===== */
-  #petals{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+  /* 落樱花动画：桌面专属 */
+  #petals{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;display:none;}
+  @media (pointer:fine) and (min-width:561px){
+    #petals{display:block;}
+  }
   .petal{
     position:absolute;top:-6vh;left:0;pointer-events:none;will-change:transform;
     animation:fall var(--dur,9s) linear var(--delay,0s) forwards;
@@ -281,7 +207,6 @@
     from{transform:translateX(calc(var(--sway,30px) * -1)) rotate(0deg);}
     to{transform:translateX(var(--sway,30px)) rotate(var(--rot,300deg));}
   }
-  /* 点击 / 鼠标撩起的花瓣（向外飞散） */
   .burst-petal{
     position:absolute;pointer-events:none;will-change:transform,opacity;
     width:var(--size,14px);height:var(--size,14px);
@@ -295,25 +220,11 @@
     100%{transform:translate(var(--vx,0px),var(--vy,80px)) rotate(var(--rot,220deg)) scale(.5);opacity:0;}
   }
 
-  /* ===== 右下角 3D 模型人物（装饰，不可交互） ===== */
-  #mascot{
-    position:fixed;right:10px;bottom:10px;z-index:0;pointer-events:none;
-    width:220px;height:220px;
-    background:url("character.png") center/contain no-repeat;
-    filter:drop-shadow(0 14px 28px rgba(0,50,25,.28));
-    animation:floatMascot 5.5s ease-in-out infinite;
-  }
-  @keyframes floatMascot{
-    0%,100%{transform:translateY(0) rotate(0deg);}
-    50%{transform:translateY(-16px) rotate(-2deg);}
-  }
   @media (max-width:680px){
-    #mascot{width:120px;height:120px;right:4px;bottom:4px;opacity:.55;}
+    .topbar .brand span{display:none;}
   }
-
   @media (max-width:560px){
     .topbar{gap:8px;padding:8px 10px;}
-    .topbar .brand span{display:none;}
     .search-sm{flex:1;max-width:none;}
     .tools{grid-template-columns:1fr;}
     .wrap{padding:20px 14px 60px;}
@@ -324,22 +235,29 @@
   <div id="bg"></div>
   <div id="petals"></div>
   <header class="topbar">
-    <div class="brand">🛠️ <span>工具箱</span></div>
+    <div class="brand">
+      <svg width="16" height="16" viewBox="0 0 100 100" aria-hidden="true">
+        <rect x="10" y="55" width="18" height="35" rx="4" fill="#2d8659"/>
+        <rect x="41" y="20" width="18" height="70" rx="4" fill="#3ea471"/>
+        <rect x="72" y="40" width="18" height="50" rx="4" fill="#5fcaa0"/>
+        <path d="M20 12l8-8 8 8z" fill="#3ea471"/><path d="M51 12l8-8 8 8z" fill="#5fcaa0"/>
+      </svg>
+      <span>工具箱</span>
+    </div>
     <div class="search-sm">
       <span class="mag">🔍</span>
       <input id="q" type="text" placeholder="搜索工具…" autocomplete="off">
     </div>
     <div style="flex:1"></div>
-    <button class="iconbtn" id="tintBtn" title="切换背景色调（薄荷/抹茶/青瓷）" aria-label="切换背景色调">🎨</button>
-    <button class="iconbtn" id="themeBtn" title="切换深色/浅色模式" aria-label="切换深色模式">🌙</button>
+    <button class="iconbtn" id="tintBtn" type="button" title="切换背景色调（薄荷/抹茶/青瓷）" aria-label="切换背景色调">🎨</button>
+    <button class="iconbtn" id="themeBtn" type="button" title="切换深色模式" aria-label="切换深色模式">🌙</button>
   </header>
 
   <main class="wrap">
     <div class="hero">
       <div class="tag">✨ 亚马逊运营人的专属工具站</div>
       <h1><span class="g">亚马逊运营工具箱</span></h1>
-      <p class="sub">一个收藏夹，搞定日常运营 · 自研工具 + 精选外部资源</p>
-    </div>
+      </div>
 
     <nav class="pills" id="pills">
       <button class="pill active" data-cat="all">全部</button>
@@ -355,21 +273,21 @@
 
     <!-- 自研工具 -->
     <div class="section" data-cat="self">
-      <h2>🧰 自研工具 <span class="cnt">5</span></h2>
+      <h2>🧰 自研工具 <span class="cnt">0</span></h2>
       <div class="tools">
-        <a href="profit/" class="tool" data-name="利润计算器" data-icon="💰" data-desc="单SKU + 批量核算">
+        <a href="profit/" class="tool" data-name="利润计算器" data-icon="💰" data-desc="单SKU + 批量核算" data-keywords="成本 售价 毛利 德国 美国">
           <div class="ic">💰</div><div class="txt"><div class="n">利润计算器</div><div class="d">单SKU + 批量核算</div></div>
         </a>
-        <a href="fba-calculator/" class="tool" data-name="FBA运费计算器" data-icon="🚚" data-desc="德站/美站 · 2026费率">
+        <a href="fba-calculator/" class="tool" data-name="FBA运费计算器" data-icon="🚚" data-desc="德站/美站 · 2026费率" data-keywords="fba 运费 配送 尺寸 重量">
           <div class="ic">🚚</div><div class="txt"><div class="n">FBA运费计算器</div><div class="d">德站/美站 · 2026费率</div></div>
         </a>
-        <a href="volumetric-weight/" class="tool" data-name="体积重计算器" data-icon="📦" data-desc="单箱/多箱 · 粘贴导入">
+        <a href="volumetric-weight/" class="tool" data-name="体积重计算器" data-icon="📦" data-desc="单箱/多箱 · 粘贴导入" data-keywords="体积重 抛重 计费 箱子">
           <div class="ic">📦</div><div class="txt"><div class="n">体积重计算器</div><div class="d">单箱/多箱 · 粘贴导入</div></div>
         </a>
-        <a href="listing/" class="tool" data-name="Listing提取器" data-icon="📋" data-desc="德语文案自动提取">
+        <a href="listing/" class="tool" data-name="Listing提取器" data-icon="📋" data-desc="德语文案自动提取" data-keywords="listing 文案 德语 五点 标题">
           <div class="ic">📋</div><div class="txt"><div class="n">Listing提取器</div><div class="d">德语文案自动提取</div></div>
         </a>
-        <a href="ai-image-tagger/" class="tool" data-name="AI图片标记工具" data-icon="🏷️" data-desc="XMP批量打标 · GPSR合规">
+        <a href="ai-image-tagger/" class="tool" data-name="AI图片标记工具" data-icon="🏷️" data-desc="XMP批量打标 · GPSR合规" data-keywords="xmp gpsr 图片 标记 合规">
           <div class="ic">🏷️</div><div class="txt"><div class="n">AI图片标记工具</div><div class="d">XMP批量打标 · GPSR合规</div></div>
         </a>
       </div>
@@ -377,18 +295,18 @@
 
     <!-- 选品运营 -->
     <div class="section" data-cat="ops">
-      <h2>📊 选品 & 运营 <span class="cnt">4</span></h2>
+      <h2>📊 选品 & 运营 <span class="cnt">0</span></h2>
       <div class="tools">
-        <a href="https://www.sellersprite.com/v3/keyword-miner" target="_blank" rel="noopener" class="tool" data-name="卖家精灵" data-icon="🔍" data-desc="关键词挖掘 · 选品分析">
+        <a href="https://www.sellersprite.com/v3/keyword-miner" target="_blank" rel="noopener" class="tool" data-name="卖家精灵" data-icon="🔍" data-desc="关键词挖掘 · 选品分析" data-keywords="关键词 选品 分析 反查">
           <div class="ic">🔍</div><div class="txt"><div class="n">卖家精灵 <span class="ext">↗</span></div><div class="d">关键词挖掘 · 选品分析</div></div>
         </a>
-        <a href="https://www.hsbianma.com/" target="_blank" rel="noopener" class="tool" data-name="HS海关编码" data-icon="🏷️" data-desc="海关编码查询">
+        <a href="https://www.hsbianma.com/" target="_blank" rel="noopener" class="tool" data-name="HS海关编码" data-icon="🏷️" data-desc="海关编码查询" data-keywords="海关 编码 hs code 报关">
           <div class="ic">🏷️</div><div class="txt"><div class="n">HS海关编码 <span class="ext">↗</span></div><div class="d">海关编码查询</div></div>
         </a>
-        <a href="https://www.amazon.com/?mr_donotredirect" target="_blank" rel="noopener" class="tool" data-name="亚马逊美国站" data-icon="🇺🇸" data-desc="Amazon.com">
+        <a href="https://www.amazon.com/?mr_donotredirect" target="_blank" rel="noopener" class="tool" data-name="亚马逊美国站" data-icon="🇺🇸" data-desc="Amazon.com" data-keywords="amazon 美国 前台">
           <div class="ic">🇺🇸</div><div class="txt"><div class="n">亚马逊美国站 <span class="ext">↗</span></div><div class="d">Amazon.com</div></div>
         </a>
-        <a href="https://www.amazon.de/?mr_donotredirect" target="_blank" rel="noopener" class="tool" data-name="亚马逊德国站" data-icon="🇩🇪" data-desc="Amazon.de">
+        <a href="https://www.amazon.de/?mr_donotredirect" target="_blank" rel="noopener" class="tool" data-name="亚马逊德国站" data-icon="🇩🇪" data-desc="Amazon.de" data-keywords="amazon 德国 前台">
           <div class="ic">🇩🇪</div><div class="txt"><div class="n">亚马逊德国站 <span class="ext">↗</span></div><div class="d">Amazon.de</div></div>
         </a>
       </div>
@@ -396,24 +314,24 @@
 
     <!-- 图片设计 -->
     <div class="section" data-cat="design">
-      <h2>🎨 图片 & 设计 <span class="cnt">6</span></h2>
+      <h2>🎨 图片 & 设计 <span class="cnt">0</span></h2>
       <div class="tools">
-        <a href="https://www.deepl.com/translator" target="_blank" rel="noopener" class="tool" data-name="DeepL翻译" data-icon="🌐" data-desc="德语文案翻译">
+        <a href="https://www.deepl.com/translator" target="_blank" rel="noopener" class="tool" data-name="DeepL翻译" data-icon="🌐" data-desc="德语文案翻译" data-keywords="deepl 翻译 德语">
           <div class="ic">🌐</div><div class="txt"><div class="n">DeepL 翻译 <span class="ext">↗</span></div><div class="d">德语文案翻译</div></div>
         </a>
-        <a href="https://translate.google.com" target="_blank" rel="noopener" class="tool" data-name="Google翻译" data-icon="🔤" data-desc="多语言快速翻译">
+        <a href="https://translate.google.com" target="_blank" rel="noopener" class="tool" data-name="Google翻译" data-icon="🔤" data-desc="多语言快速翻译" data-keywords="谷歌 翻译 多语言">
           <div class="ic">🔤</div><div class="txt"><div class="n">Google 翻译 <span class="ext">↗</span></div><div class="d">多语言快速翻译</div></div>
         </a>
-        <a href="https://www.canva.com" target="_blank" rel="noopener" class="tool" data-name="Canva" data-icon="🎨" data-desc="主图/A+ 设计">
+        <a href="https://www.canva.com" target="_blank" rel="noopener" class="tool" data-name="Canva" data-icon="🎨" data-desc="主图/A+ 设计" data-keywords="canva 设计 主图 aplus 海报">
           <div class="ic">🎨</div><div class="txt"><div class="n">Canva <span class="ext">↗</span></div><div class="d">主图/A+ 设计</div></div>
         </a>
-        <a href="https://www.figma.com" target="_blank" rel="noopener" class="tool" data-name="Figma" data-icon="✏️" data-desc="UI/图片设计">
+        <a href="https://www.figma.com" target="_blank" rel="noopener" class="tool" data-name="Figma" data-icon="✏️" data-desc="UI/图片设计" data-keywords="figma ui 设计 原型">
           <div class="ic">✏️</div><div class="txt"><div class="n">Figma <span class="ext">↗</span></div><div class="d">UI/图片设计</div></div>
         </a>
-        <a href="https://www.iloveimg.com/zh-cn/resize-image" target="_blank" rel="noopener" class="tool" data-name="图片尺寸修改" data-icon="📐" data-desc="iLoveIMG 批量改尺寸">
+        <a href="https://www.iloveimg.com/zh-cn/resize-image" target="_blank" rel="noopener" class="tool" data-name="图片尺寸修改" data-icon="📐" data-desc="iLoveIMG 批量改尺寸" data-keywords="图片 尺寸 压缩 resize iloveimg">
           <div class="ic">📐</div><div class="txt"><div class="n">图片尺寸修改 <span class="ext">↗</span></div><div class="d">iLoveIMG 批量改尺寸</div></div>
         </a>
-        <a href="https://www.remove.bg" target="_blank" rel="noopener" class="tool" data-name="Remove.bg" data-icon="✂️" data-desc="一键抠图去背景">
+        <a href="https://www.remove.bg" target="_blank" rel="noopener" class="tool" data-name="Remove.bg" data-icon="✂️" data-desc="一键抠图去背景" data-keywords="抠图 背景 removebg 透明">
           <div class="ic">✂️</div><div class="txt"><div class="n">Remove.bg <span class="ext">↗</span></div><div class="d">一键抠图去背景</div></div>
         </a>
       </div>
@@ -436,7 +354,15 @@
   const q = $('#q');
   const none = $('#none');
 
-  // ===== 搜索 + 分类过滤 =====
+  // ===== 自动统计分类数量（替代原来手写的 5/4/6） =====
+  sections.forEach(sec=>{
+    const cnt = sec.querySelectorAll('.tool').length;
+    sec.querySelector('.cnt').textContent = cnt;
+  });
+
+  // ===== 首屏统计条 —— 已移除 =====
+
+  // ===== 搜索（卡片级过滤）+ 分类过滤 =====
   let activeCat = 'all';
   function apply(){
     const kw = q.value.trim().toLowerCase();
@@ -444,17 +370,17 @@
     sections.forEach(sec=>{
       const cat = sec.dataset.cat;
       const secVisible = activeCat==='all' || activeCat===cat;
-      sec.style.display = secVisible ? '' : 'none';
-      if(!secVisible) return;
       let secHit = 0;
       sec.querySelectorAll('.tool').forEach(t=>{
-        const hay = (t.dataset.name + ' ' + t.dataset.desc).toLowerCase();
-        const hit = !kw || hay.includes(kw);
-        t.dataset.hidden = hit ? '' : '1';
-        if(hit){ secHit++; visible++; }
+        const hay = (t.dataset.name + ' ' + t.dataset.desc + ' ' + (t.dataset.keywords||'')).toLowerCase();
+        const hit = (!kw || hay.includes(kw)) && secVisible;
+        // 直接控制样式，不再依赖任何 data-hidden CSS 规则
+        t.style.display = hit ? '' : 'none';
+        if(hit) secHit++;
       });
-      // 该分类下没有命中就整体隐藏分区
+      if(!secVisible && secHit===0){ sec.style.display = 'none'; return; }
       sec.style.display = secHit===0 ? 'none' : '';
+      visible += secHit;
     });
     none.classList.toggle('show', visible===0);
   }
@@ -501,10 +427,12 @@
 
   // ===== 主题 =====
   const themeBtn = $('#themeBtn');
+  const tintBtn = $('#tintBtn');
   function setTheme(mode){
     document.documentElement.setAttribute('data-theme', mode);
     themeBtn.textContent = mode==='dark' ? '☀️' : '🌙';
     themeBtn.title = mode==='dark' ? '切换浅色模式' : '切换深色模式';
+    themeBtn.setAttribute('aria-label', themeBtn.title);
     try{ localStorage.setItem('toolbox_theme', mode); }catch(e){}
   }
   (function initTheme(){
@@ -517,6 +445,30 @@
     setTheme(cur==='dark' ? 'light' : 'dark');
   });
 
+  // ===== 背景色调预设切换 =====
+  const TINTS = ['mint','matcha','celadon'];
+  const TINT_NAME = { mint:'薄荷', matcha:'抹茶', celadon:'青瓷' };
+  function setTint(t){
+    document.documentElement.setAttribute('data-tint', t);
+    try{ localStorage.setItem('toolbox_tint', t); }catch(e){}
+  }
+  (function(){
+    const saved = localStorage.getItem('toolbox_tint');
+    if(saved && TINTS.includes(saved)) setTint(saved);
+  })();
+  if(tintBtn){
+    tintBtn.title = '背景色调：' + (TINT_NAME[document.documentElement.getAttribute('data-tint')||'mint']) + '（点击切换）';
+    tintBtn.setAttribute('aria-label', tintBtn.title);
+    tintBtn.addEventListener('click', ()=>{
+      const cur = document.documentElement.getAttribute('data-tint') || 'mint';
+      const next = TINTS[(TINTS.indexOf(cur) + 1) % TINTS.length];
+      setTint(next);
+      const label = '背景色调：' + TINT_NAME[next] + '（点击切换）';
+      tintBtn.title = label;
+      tintBtn.setAttribute('aria-label', label);
+    });
+  }
+
   // ===== 滚动时顶栏浮现磨砂底 =====
   const topbar = document.querySelector('.topbar');
   function onScroll(){ topbar.classList.toggle('scrolled', window.scrollY > 20); }
@@ -524,7 +476,7 @@
   onScroll();
 
   // ===== 背景轮播 =====
-  const BGS = ['bg.jpg'];   // 轮播背景图列表，加图即可：['bg.jpg','bg2.jpg','bg3.jpg']
+  const BGS = ['bg.jpg'];
   const bgLayer = document.getElementById('bg');
   BGS.forEach(src=>{
     const d = document.createElement('div');
@@ -543,9 +495,13 @@
     }, 6000);
   }
 
-  // ===== 落樱花动画 =====
+  // ===== 落樱花动画（仅在支持细指针且非窄屏时运行） =====
   const petalLayer = document.getElementById('petals');
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = matchMedia('(pointer:fine)').matches;
+  const isWide = innerWidth >= 561;
+  const enablePetalFx = !reduceMotion && finePointer && isWide;
+
   const PETAL_COLORS = [
     'linear-gradient(135deg,#ffd9e8,#ff9ec4)',
     'linear-gradient(135deg,#ffe3ee,#ffb7d5)',
@@ -554,12 +510,12 @@
   function spawnPetal(){
     const p = document.createElement('div');
     p.className = 'petal';
-    const size = 9 + Math.random()*13;            // 9~22px
-    const dur = 7 + Math.random()*7;              // 7~14s 下落
-    const delay = -Math.random()*dur;             // 负延迟：打开即满屏花瓣
-    const sway = 25 + Math.random()*60;           // 横向摆动幅度
-    const swaydur = 2.5 + Math.random()*3;        // 摆动周期
-    const rot = 180 + Math.random()*420;          // 旋转角度
+    const size = 9 + Math.random()*13;
+    const dur = 7 + Math.random()*7;
+    const delay = -Math.random()*dur;
+    const sway = 25 + Math.random()*60;
+    const swaydur = 2.5 + Math.random()*3;
+    const rot = 180 + Math.random()*420;
     const op = (0.55 + Math.random()*0.4).toFixed(2);
     const c = PETAL_COLORS[(Math.random()*PETAL_COLORS.length)|0];
     p.style.left = (Math.random()*100).toFixed(1) + 'vw';
@@ -578,7 +534,21 @@
     spawnPetal();
     setTimeout(petalLoop, 120 + Math.random()*260);
   }
-  if(!reduceMotion){ petalLoop(); }
+  let petalTimer = null;
+  if(enablePetalFx){
+    petalTimer = setTimeout(petalLoop, 100);
+  }
+  // 窗口缩放导致动效开关变化时，动态启停
+  addEventListener('resize', ()=>{
+    const shouldRun = !reduceMotion && finePointer && innerWidth >= 561;
+    if(shouldRun && !petalTimer){
+      petalTimer = setTimeout(petalLoop, 100);
+    } else if(!shouldRun && petalTimer){
+      clearTimeout(petalTimer);
+      petalTimer = null;
+      petalLayer.innerHTML = '';   // 清掉已落下的花瓣
+    }
+  });
 
   // ===== 卡片错峰入场动画 =====
   if(!reduceMotion){
@@ -592,52 +562,30 @@
     document.body.classList.add('ready');
   }
 
-  // ===== 背景滚动视差（背景比内容滚得慢） =====
+  // ===== 背景滚动视差（仅在宽屏、无动效偏好下启用） =====
   const bgEl = document.getElementById('bg');
-  if(bgEl && !reduceMotion){
+  if(bgEl && !reduceMotion && finePointer && isWide){
     let ticking = false;
     function onParallax(){
       if(ticking) return;
       ticking = true;
       requestAnimationFrame(()=>{
-        const maxShift = window.innerHeight * 0.2;
-        const shift = Math.min(window.scrollY * 0.18, maxShift);
+        const maxShift = innerHeight * 0.2;
+        const shift = Math.min(scrollY * 0.18, maxShift);
         bgEl.style.transform = 'translate3d(0,' + (-shift) + 'px,0)';
         ticking = false;
       });
     }
-    window.addEventListener('scroll', onParallax, { passive:true });
+    addEventListener('scroll', onParallax, { passive:true });
     onParallax();
   }
 
-  // ===== 背景色调预设切换 =====
-  const TINTS = ['mint','matcha','celadon'];
-  const TINT_NAME = { mint:'薄荷', matcha:'抹茶', celadon:'青瓷' };
-  const tintBtn = document.getElementById('tintBtn');
-  function setTint(t){
-    document.documentElement.setAttribute('data-tint', t);
-    try{ localStorage.setItem('toolbox_tint', t); }catch(e){}
-  }
-  (function(){
-    const saved = localStorage.getItem('toolbox_tint');
-    if(saved && TINTS.includes(saved)) setTint(saved);
-  })();
-  if(tintBtn){
-    tintBtn.title = '背景色调：' + TINT_NAME[document.documentElement.getAttribute('data-tint')||'mint'] + '（点击切换）';
-    tintBtn.addEventListener('click', ()=>{
-      const cur = document.documentElement.getAttribute('data-tint') || 'mint';
-      const next = TINTS[(TINTS.indexOf(cur) + 1) % TINTS.length];
-      setTint(next);
-      tintBtn.title = '背景色调：' + TINT_NAME[next] + '（点击切换）';
-    });
-  }
-
-  // ===== 点击炸花 / 鼠标扫花 =====
+  // ===== 点击炸花 / 鼠标扫花（仅动效开启时绑定） =====
   function burstPetal(x, y, ang){
     const p = document.createElement('div');
     p.className = 'burst-petal';
     if(ang === undefined) ang = Math.random() * Math.PI * 2;
-    const dist = 55 + Math.random() * 95;   // 散开距离 55~150px
+    const dist = 55 + Math.random() * 95;
     p.style.left = x + 'px';
     p.style.top = y + 'px';
     p.style.setProperty('--vx', (Math.cos(ang)*dist).toFixed(0) + 'px');
@@ -650,10 +598,10 @@
     petalLayer.appendChild(p);
     setTimeout(()=>p.remove(), 1400);
   }
-  if(!reduceMotion){
+  if(enablePetalFx){
     document.addEventListener('click', e=>{
       if(e.target.closest('a,button,input,label')) return;
-      const n = 11 + (Math.random()*6|0);   // 每次 11~16 片，均匀围成一圈
+      const n = 11 + (Math.random()*6|0);
       const base = Math.random() * Math.PI * 2;
       for(let i=0;i<n;i++){
         const ang = base + (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
@@ -692,7 +640,13 @@
   if(dailyEl){
     const now = new Date();
     const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-    dailyEl.textContent = '🍀 ' + TIPS[dayOfYear % TIPS.length];
+    dailyEl.textContent = '🍀 点我换一条 · ' + TIPS[dayOfYear % TIPS.length];
+    let currentTip = dayOfYear % TIPS.length;
+    dailyEl.style.cursor = 'pointer';
+    dailyEl.addEventListener('click', ()=>{
+      currentTip = (currentTip + 1) % TIPS.length;
+      dailyEl.textContent = '🍀 点我换一条 · ' + TIPS[currentTip];
+    });
   }
 })();
 </script>
