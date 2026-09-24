@@ -1,699 +1,835 @@
- <!DOCTYPE html>
-  <html lang="zh-CN" data-theme="light">
-  <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>亚马逊运营工具箱</title>
-  <meta name="description" content="自研工具 + 精选外部资源：利润计算、FBA 运费、Listing
-  提取、选品运营、图片设计，一站式亚马逊运营工具箱。">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect
-  x='10' y='55' width='18' height='35' rx='4' fill='%232d8659'/%3E%3Crect x='41' y='20' width='18' height='70' rx='4'
-  fill='%233ea471'/%3E%3Crect x='72' y='40' width='18' height='50' rx='4' fill='%235fcaa0'/%3E%3Cpath d='M20 12l8-8 8
-  8z' fill='%233ea471'/%3E%3Cpath d='M51 12l8-8 8 8z' fill='%235fcaa0'/%3E%3C/svg%3E">
-  <style>
-    :root{
-      --text:#1e3328; --muted:#56705f; --accent:#2d8659; --accent-soft:rgba(45,134,89,.10);
-      --card-bg:rgba(255,255,255,.86); --card-border:rgba(201,221,209,.55);
-      --card-shadow:0 4px 20px rgba(0,60,30,.08); --card-shadow-h:0 8px 28px rgba(0,60,30,.15);
-      --topbar:rgba(248,252,250,.86); --input-bg:rgba(255,255,255,.9);
-      --tint-a:rgba(205,235,220,.48); --tint-b:rgba(170,220,195,.38);
-      --overlay:linear-gradient(135deg,var(--tint-a) 0%,var(--tint-b) 100%);
-      --bg-a:#dbeede; --bg-b:#f3faf5; --bg-c:#cfe8d9;
-    }
-    [data-theme="dark"]{
-      --text:#e4f0e8; --muted:#9bb8a6; --accent:#6ed39b; --accent-soft:rgba(110,211,155,.14);
-      --card-bg:rgba(24,38,30,.82); --card-border:rgba(90,140,110,.28);
-      --card-shadow:0 4px 20px rgba(0,0,0,.35); --card-shadow-h:0 8px 30px rgba(0,0,0,.45);
-      --topbar:rgba(15,26,19,.82); --input-bg:rgba(30,45,36,.9);
-      --tint-a:rgba(10,24,17,.62); --tint-b:rgba(14,30,22,.52);
-      --bg-a:#13231a; --bg-b:#0e1c14; --bg-c:#173024;
-    }
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>亚马逊运营工具箱</title>
+<meta name="description" content="自研工具 + 精选外部资源：利润计算、FBA 运费、Listing 提取、选品运营、图片设计，一站式亚马逊运营工具箱。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='10' y='55' width='18' height='35' rx='4' fill='%232d8659'/%3E%3Crect x='41' y='20' width='18' height='70' rx='4' fill='%233ea471'/%3E%3Crect x='72' y='40' width='18' height='50' rx='4' fill='%235fcaa0'/%3E%3Cpath d='M20 12l8-8 8 8z' fill='%233ea471'/%3E%3Cpath d='M51 12l8-8 8 8z' fill='%235fcaa0'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --text:#1e3328; --muted:#56705f; --accent:#2d8659; --accent-soft:rgba(45,134,89,.10);
+    --card-bg:rgba(255,255,255,.86); --card-border:rgba(201,221,209,.55);
+    --card-shadow:0 4px 20px rgba(0,60,30,.08); --card-shadow-h:0 8px 28px rgba(0,60,30,.15);
+    --topbar:rgba(248,252,250,.86); --input-bg:rgba(255,255,255,.9);
+    --tint-a:rgba(205,235,220,.48); --tint-b:rgba(170,220,195,.38);
+    --overlay:linear-gradient(135deg,var(--tint-a) 0%,var(--tint-b) 100%);
+    --bg-a:#dbeede; --bg-b:#f3faf5; --bg-c:#cfe8d9;
+  }
+  [data-theme="dark"]{
+    --text:#e4f0e8; --muted:#9bb8a6; --accent:#6ed39b; --accent-soft:rgba(110,211,155,.14);
+    --card-bg:rgba(24,38,30,.82); --card-border:rgba(90,140,110,.28);
+    --card-shadow:0 4px 20px rgba(0,0,0,.35); --card-shadow-h:0 8px 30px rgba(0,0,0,.45);
+    --topbar:rgba(15,26,19,.82); --input-bg:rgba(30,45,36,.9);
+    --tint-a:rgba(10,24,17,.62); --tint-b:rgba(14,30,22,.52);
+    --bg-a:#13231a; --bg-b:#0e1c14; --bg-c:#173024;
+  }
 
-    [data-tint="matcha"]{ --tint-a:rgba(186,215,180,.44); --tint-b:rgba(150,198,162,.36); }
-    [data-tint="matcha"][data-theme="dark"]{ --tint-a:rgba(16,28,18,.62); --tint-b:rgba(20,34,22,.52); }
-    [data-tint="celadon"]{ --tint-a:rgba(188,228,220,.46); --tint-b:rgba(150,208,205,.36); }
-    [data-tint="celadon"][data-theme="dark"]{ --tint-a:rgba(9,26,24,.62); --tint-b:rgba(12,32,30,.52); }
+  [data-tint="matcha"]{ --tint-a:rgba(186,215,180,.44); --tint-b:rgba(150,198,162,.36); }
+  [data-tint="matcha"][data-theme="dark"]{ --tint-a:rgba(16,28,18,.62); --tint-b:rgba(20,34,22,.52); }
+  [data-tint="celadon"]{ --tint-a:rgba(188,228,220,.46); --tint-b:rgba(150,208,205,.36); }
+  [data-tint="celadon"][data-theme="dark"]{ --tint-a:rgba(9,26,24,.62); --tint-b:rgba(12,32,30,.52); }
 
-    *{box-sizing:border-box;margin:0;padding:0;}
-    html{scroll-behavior:smooth;}
-    body{
-      font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
-      min-height:100vh;color:var(--text);line-height:1.6;
-      background:linear-gradient(180deg,var(--bg-b),var(--bg-b));
-      padding-top:64px;
-      -webkit-font-smoothing:antialiased;
-    }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    min-height:100vh;color:var(--text);line-height:1.6;
+    background:linear-gradient(180deg,var(--bg-b),var(--bg-b));
+    padding-top:64px;
+    -webkit-font-smoothing:antialiased;
+  }
 
-    #bg{position:fixed;left:0;right:0;top:0;height:120vh;z-index:-2;overflow:hidden;pointer-events:none;will-change:tran
-  sform;}
-    .bg-slide{
-      position:absolute;inset:-20px;background-size:cover;background-position:center;
-      filter:blur(4px) saturate(1.05) brightness(1.02);transform:scale(1.05);
-      opacity:0;transition:opacity 1.8s ease-in-out;
-    }
-    .bg-slide.active{opacity:1;}
-    body::after{
-      content:"";position:fixed;inset:0;z-index:-1;
-      background:var(--overlay);
-    }
+  #bg{position:fixed;left:0;right:0;top:0;height:120vh;z-index:-2;overflow:hidden;pointer-events:none;will-change:transform;}
+  .bg-slide{
+    position:absolute;inset:-20px;background-size:cover;background-position:center;
+    filter:blur(4px) saturate(1.05) brightness(1.02);transform:scale(1.05);
+    opacity:0;transition:opacity 1.8s ease-in-out;
+  }
+  .bg-slide.active{opacity:1;}
+  body::after{
+    content:"";position:fixed;inset:0;z-index:-1;
+    background:var(--overlay);
+  }
 
-    .topbar{
-      position:fixed;top:0;left:0;right:0;z-index:50;
-      background:transparent;border-bottom:1px solid transparent;
-      display:flex;align-items:center;gap:12px;
-      padding:10px 18px;
-      transition:background .3s, border-color .3s, backdrop-filter .3s;
-    }
-    .topbar.scrolled{
-      background:var(--topbar);backdrop-filter:blur(14px) saturate(1.4);
-      border-bottom:1px solid var(--card-border);
-    }
-    .topbar .brand{font-weight:800;font-size:15px;color:var(--accent);white-space:nowrap;}
-    .brand svg{vertical-align:-3px;margin-right:4px;}
-    .search-sm{position:relative;width:230px;max-width:34vw;}
-    .search-sm input{
-      width:100%;padding:7px 12px 7px 30px;border-radius:10px;
-      border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);
-      font-size:13px;outline:none;transition:.2s;
-    }
-    .search-sm input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
-    .search-sm
-  .mag{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.45;font-size:13px;pointer-events:none;}
-    .iconbtn{
-      cursor:pointer;border:1px solid var(--card-border);background:var(--card-bg);
-      color:var(--text);width:38px;height:38px;border-radius:10px;font-size:17px;
-      display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0;
-    }
-    .iconbtn:hover{border-color:var(--accent);color:var(--accent);}
+  .topbar{
+    position:fixed;top:0;left:0;right:0;z-index:50;
+    background:transparent;border-bottom:1px solid transparent;
+    display:flex;align-items:center;gap:12px;
+    padding:10px 18px;
+    transition:background .3s, border-color .3s, backdrop-filter .3s;
+  }
+  .topbar.scrolled{
+    background:var(--topbar);backdrop-filter:blur(14px) saturate(1.4);
+    border-bottom:1px solid var(--card-border);
+  }
+  .topbar .brand{font-weight:800;font-size:15px;color:var(--accent);white-space:nowrap;}
+  .brand svg{vertical-align:-3px;margin-right:4px;}
+  .search-sm{position:relative;width:230px;max-width:34vw;}
+  .search-sm input{
+    width:100%;padding:7px 12px 7px 30px;border-radius:10px;
+    border:1px solid var(--card-border);background:var(--input-bg);color:var(--text);
+    font-size:13px;outline:none;transition:.2s;
+  }
+  .search-sm input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .search-sm .mag{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.45;font-size:13px;pointer-events:none;}
+  .iconbtn{
+    cursor:pointer;border:1px solid var(--card-border);background:var(--card-bg);
+    color:var(--text);width:38px;height:38px;border-radius:10px;font-size:17px;
+    display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0;
+  }
+  .iconbtn:hover{border-color:var(--accent);color:var(--accent);}
 
-    .wrap{max-width:1120px;margin:0 auto;padding:26px 20px 70px;position:relative;z-index:1;}
+  .wrap{max-width:1120px;margin:0 auto;padding:26px 20px 70px;position:relative;z-index:1;}
 
-    .hero{text-align:center;padding:36px 0 10px;}
-    .hero .tag{
-      display:inline-flex;align-items:center;gap:6px;
-      font-size:12px;color:var(--accent);background:var(--accent-soft);
-      border:1px solid var(--card-border);border-radius:999px;
-      padding:5px 14px;margin-bottom:18px;font-weight:500;
-    }
-    .hero h1{font-size:clamp(30px,5.5vw,52px);font-weight:800;letter-spacing:1px;line-height:1.2;margin-bottom:12px;}
-    .hero h1 .g{
-      background:linear-gradient(135deg,#2d8659 0%,#3ea471 30%,#5fcaa0 60%,#2ba29c 100%);
-      -webkit-background-clip:text;background-clip:text;
-      -webkit-text-fill-color:transparent;
-    }
+  .hero{text-align:center;padding:36px 0 10px;}
+  .hero .tag{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:12px;color:var(--accent);background:var(--accent-soft);
+    border:1px solid var(--card-border);border-radius:999px;
+    padding:5px 14px;margin-bottom:18px;font-weight:500;
+  }
+  .hero h1{font-size:clamp(30px,5.5vw,52px);font-weight:800;letter-spacing:1px;line-height:1.2;margin-bottom:12px;}
+  .hero h1 .g{
+    background:linear-gradient(135deg,#2d8659 0%,#3ea471 30%,#5fcaa0 60%,#2ba29c 100%);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
 
-    .pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:28px 0 36px;}
-    .pill{
-      cursor:pointer;padding:10px 20px;border-radius:999px;font-size:14px;font-weight:500;
-      border:1px solid var(--card-border);background:var(--card-bg);
-      color:var(--text);transition:.25s;user-select:none;
-      backdrop-filter:blur(10px);
-    }
-    .pill:hover{color:var(--accent);border-color:var(--accent);transform:translateY(-1px);}
-    .pill.active{
-      background:linear-gradient(135deg,#2d8659,#3ea471);
-      border-color:transparent;
-      color:#fff;font-weight:600;
-      box-shadow:0 4px 16px rgba(45,134,89,.35);
-    }
+  /* ===== ASIN → 亚马逊德国站 快速跳转 ===== */
+  .asin-wrap{max-width:560px;margin:28px auto 0;}
+  .asin-jump{
+    display:flex;align-items:center;gap:0;
+    background:var(--card-bg);border:1.5px solid var(--card-border);
+    border-radius:14px;padding:6px;
+    backdrop-filter:blur(12px) saturate(1.3);
+    box-shadow:0 8px 28px rgba(0,60,30,.07),inset 0 1px 0 rgba(255,255,255,.5);
+    transition:border-color .2s, box-shadow .2s;
+  }
+  .asin-wrap:focus-within .asin-jump{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft),0 10px 30px rgba(45,134,89,.12);
+  }
+  /* 输入区 */
+  .asin-jump input{
+    flex:1;min-width:0;padding:12px 14px;border:none;background:transparent;
+    color:var(--text);
+    font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;
+    font-size:15px;font-weight:600;letter-spacing:.3px;outline:none;
+  }
+  .asin-jump input::placeholder{color:var(--muted);opacity:.72;font-weight:400;}
+  /* 跳转按钮 */
+  .asin-jump button{
+    cursor:pointer;border:none;border-radius:10px;height:46px;padding:0 18px;
+    font-size:14px;font-weight:600;color:#fff;
+    background:linear-gradient(135deg,#2d8659,#3ea471);
+    box-shadow:0 4px 12px rgba(45,134,89,.28),inset 0 1px 0 rgba(255,255,255,.18);
+    transition:.2s;white-space:nowrap;display:flex;align-items:center;gap:6px;
+  }
+  .asin-jump button .aj-arrow{font-size:14px;opacity:.9;}
+  .asin-jump button:hover{filter:brightness(1.06);box-shadow:0 7px 20px rgba(45,134,89,.34);}
+  .asin-jump button:active{transform:translateY(1px);}
+  .asin-hint{min-height:18px;font-size:12px;color:#d3462f;padding:5px 6px 0;text-align:left;}
+  .asin-hint.ok{color:var(--accent);}
+  .pill{
+    cursor:pointer;padding:10px 20px;border-radius:999px;font-size:14px;font-weight:500;
+    border:1px solid var(--card-border);background:var(--card-bg);
+    color:var(--text);transition:.25s;user-select:none;
+    backdrop-filter:blur(10px);
+  }
+  .pill:hover{color:var(--accent);border-color:var(--accent);transform:translateY(-1px);}
+  .pill.active{
+    background:linear-gradient(135deg,#2d8659,#3ea471);
+    border-color:transparent;
+    color:#fff;font-weight:600;
+    box-shadow:0 4px 16px rgba(45,134,89,.35);
+  }
 
-    .recent{margin-bottom:30px;display:none;}
-    .recent.show{display:block;}
-    .recent
-  h2{font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600;display:flex;align-items:center;gap:6px;}
-    .recent .strip{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;}
-    .recent a{
-      flex:0 0 auto;display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);
-      background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;
-      padding:8px 14px;font-size:13px;transition:.18s;
-    }
-    .recent a:hover{border-color:var(--accent);transform:translateY(-2px);}
+  .recent{margin-bottom:30px;display:none;}
+  .recent.show{display:block;}
+  .recent h2{font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600;display:flex;align-items:center;gap:6px;}
+  .recent .strip{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;}
+  .recent a{
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);
+    background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;
+    padding:8px 14px;font-size:13px;transition:.18s;
+  }
+  .recent a:hover{border-color:var(--accent);transform:translateY(-2px);}
 
-    .section{margin-bottom:42px;}
-    .section
-  h2{font-size:18px;color:var(--text);font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
-    .section h2 .ico{font-size:22px;}
-    .section h2 .cnt{
-      font-size:12px;font-weight:500;color:var(--accent);background:var(--accent-soft);
-      border-radius:999px;padding:3px 11px;margin-left:4px;
-    }
-    .section .desc{font-size:13px;color:var(--muted);margin:-8px 0 14px 2px;}
+  .section{margin-bottom:42px;}
+  .section h2{font-size:18px;color:var(--text);font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+  .section h2 .ico{font-size:22px;}
+  .section h2 .cnt{
+    font-size:12px;font-weight:500;color:var(--accent);background:var(--accent-soft);
+    border-radius:999px;padding:3px 11px;margin-left:4px;
+  }
+  .section .desc{font-size:13px;color:var(--muted);margin:-8px 0 14px 2px;}
 
-    .tools{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));}
-    .tool{
-      background:var(--card-bg);backdrop-filter:blur(14px) saturate(1.3);
-      padding:22px 20px;border-radius:18px;text-decoration:none;color:inherit;
-      box-shadow:0 4px 24px rgba(0,60,30,.06),inset 0 1px 0 rgba(255,255,255,.5);
-      transition:.28s cubic-bezier(.2,.7,.3,1);
-      border:1.5px solid var(--card-border);display:flex;align-items:center;gap:14px;
-      position:relative;overflow:hidden;
-    }
-    .tool::before{
-      content:"";position:absolute;inset:0;border-radius:18px;padding:1.5px;
-      background:linear-gradient(135deg,rgba(45,134,89,0) 0%,rgba(45,134,89,0) 50%,rgba(45,134,89,0) 100%);
-      -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
-      -webkit-mask-composite:xor;mask-composite:exclude;
-      opacity:0;transition:.3s;pointer-events:none;
-    }
-    .tool:hover{
-      transform:translateY(-4px) scale(1.01);
-      box-shadow:0 16px 48px rgba(45,134,89,.2),0 4px 12px rgba(0,0,0,.05);
-    }
-    .tool:hover::before{
-      background:linear-gradient(135deg,rgba(45,134,89,.6) 0%,rgba(110,211,155,.4) 50%,rgba(43,162,156,.5) 100%);
-      opacity:1;
-    }
-    .tool:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
-    .tool .ic{font-size:34px;flex-shrink:0;line-height:1;transition:.3s;}
-    .tool:hover .ic{transform:scale(1.12) rotate(-4deg);}
-    .tool .txt{flex:1;min-width:0;}
-    .tool
-  .n{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:5px;}
-    .tool:hover .n{color:var(--accent);}
-    .tool
-  .d{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;}
-    .tool .ext{font-size:10px;color:var(--muted);opacity:.5;margin-left:4px;}
+  .tools{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));}
+  .tool{
+    background:
+      linear-gradient(180deg, rgba(94,180,130,.10) 0%, rgba(255,255,255,0) 46%),
+      var(--card-bg);
+    backdrop-filter:blur(14px) saturate(1.3);
+    padding:22px 22px 22px 20px;border-radius:18px;text-decoration:none;color:inherit;
+    box-shadow:0 4px 24px rgba(0,60,30,.06),inset 0 1px 0 rgba(255,255,255,.5);
+    transition:.28s cubic-bezier(.2,.7,.3,1);
+    border:1.5px solid var(--card-border);display:flex;align-items:center;gap:16px;
+    position:relative;overflow:hidden;
+  }
+  .tool::before{
+    content:"";position:absolute;inset:0;border-radius:18px;padding:1.5px;
+    background:linear-gradient(135deg,rgba(45,134,89,0) 0%,rgba(45,134,89,0) 50%,rgba(45,134,89,0) 100%);
+    -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;
+    opacity:0;transition:.3s;pointer-events:none;
+  }
+  .tool:hover{
+    transform:translateY(-4px) scale(1.01);
+    box-shadow:0 16px 48px rgba(45,134,89,.2),0 4px 12px rgba(0,0,0,.05);
+  }
+  .tool:hover::before{
+    background:linear-gradient(135deg,rgba(45,134,89,.6) 0%,rgba(110,211,155,.4) 50%,rgba(43,162,156,.5) 100%);
+    opacity:1;
+  }
+  .tool:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  /* 左侧绿色竖条强调 */
+  .tool::after{
+    content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+    width:4px;height:56%;border-radius:0 4px 4px 0;
+    background:linear-gradient(180deg,#3ea471,#2d8659);opacity:.95;
+  }
+  /* 图标：实心绿渐变瓷块 */
+  .tool .ic{
+    width:46px;height:46px;flex-shrink:0;border-radius:13px;
+    background:linear-gradient(135deg,#3ea471,#2d8659);
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;color:#fff;line-height:1;
+    box-shadow:0 6px 14px rgba(45,134,89,.28),inset 0 1px 0 rgba(255,255,255,.25);
+    transition:transform .28s;
+  }
+  .tool:hover .ic{transform:scale(1.08) rotate(-3deg);}
+  /* 深色模式：更亮绿 */
+  [data-theme="dark"] .tool{
+    background:
+      linear-gradient(180deg, rgba(110,211,155,.12) 0%, rgba(255,255,255,0) 46%),
+      var(--card-bg);
+  }
+  [data-theme="dark"] .tool::after{background:linear-gradient(180deg,#6ed39b,#2d8659);}
+  [data-theme="dark"] .tool .ic{
+    background:linear-gradient(135deg,#6ed39b,#3ea471);
+    box-shadow:0 6px 16px rgba(110,211,155,.25),inset 0 1px 0 rgba(255,255,255,.15);
+  }
+  /* 悬停：渐变加深，配合外发光 */
+  .tool:hover{
+    background:
+      linear-gradient(180deg, rgba(94,180,130,.17) 0%, rgba(255,255,255,0) 55%),
+      var(--card-bg);
+  }
+  [data-theme="dark"] .tool:hover{
+    background:
+      linear-gradient(180deg, rgba(110,211,155,.20) 0%, rgba(255,255,255,0) 55%),
+      var(--card-bg);
+  }
+  .tool .txt{flex:1;min-width:0;}
+  .tool .n{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:5px;}
+  .tool:hover .n{color:var(--accent);}
+  .tool .d{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;}
+  .tool .ext{font-size:10px;color:var(--muted);opacity:.5;margin-left:4px;}
 
-    .tool{opacity:0;}
-    .tool.rise{animation:riseIn .6s cubic-bezier(.2,.7,.3,1) forwards;}
-    @keyframes riseIn{
-      from{opacity:0;transform:translateY(28px);}
-      to{opacity:1;transform:translateY(0);}
-    }
-    body.ready .tool{opacity:1;animation:none;}
+  .tool{opacity:0;}
+  .tool.rise{animation:riseIn .6s cubic-bezier(.2,.7,.3,1) forwards;}
+  @keyframes riseIn{
+    from{opacity:0;transform:translateY(28px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  body.ready .tool{opacity:1;animation:none;}
 
-    .none{display:none;text-align:center;color:var(--muted);padding:40px 10px;font-size:14px;}
-    .none.show{display:block;}
+  .none{display:none;text-align:center;color:var(--muted);padding:40px 10px;font-size:14px;}
+  .none.show{display:block;}
 
-    footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px;opacity:.7;}
-    .daily{
-      max-width:520px;margin:34px auto 0;text-align:center;
-      color:var(--muted);font-size:13px;
-      background:var(--card-bg);border:1px solid var(--card-border);
-      border-radius:999px;padding:10px 22px;backdrop-filter:blur(8px);
-    }
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px;opacity:.7;}
+  .daily{
+    max-width:520px;margin:34px auto 0;text-align:center;
+    color:var(--muted);font-size:13px;
+    background:var(--card-bg);border:1px solid var(--card-border);
+    border-radius:999px;padding:10px 22px;backdrop-filter:blur(8px);
+  }
 
-    /* 落樱花动画：桌面专属 */
-    #petals{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;display:none;}
-    @media (pointer:fine) and (min-width:561px){
-      #petals{display:block;}
-    }
-    .petal{
-      position:absolute;top:-6vh;left:0;pointer-events:none;will-change:transform;
-      animation:fall var(--dur,9s) linear var(--delay,0s) forwards;
-    }
-    @keyframes fall{
-      from{transform:translate3d(0,0,0);}
-      to{transform:translate3d(0,116vh,0);}
-    }
-    .petal i{
-      display:block;width:var(--size,14px);height:var(--size,14px);
-      background:var(--c,linear-gradient(135deg,#ffd9e8,#ff9ec4));
-      border-radius:85% 0 85% 0;
-      opacity:var(--opacity,.8);
-      animation:sway var(--swaydur,3.5s) ease-in-out 0s infinite alternate;
-    }
-    @keyframes sway{
-      from{transform:translateX(calc(var(--sway,30px) * -1)) rotate(0deg);}
-      to{transform:translateX(var(--sway,30px)) rotate(var(--rot,300deg));}
-    }
-    .burst-petal{
-      position:absolute;pointer-events:none;will-change:transform,opacity;
-      width:var(--size,14px);height:var(--size,14px);
-      background:var(--c,linear-gradient(135deg,#ffd9e8,#ff9ec4));
-      border-radius:85% 0 85% 0;
-      opacity:var(--opacity,.85);
-      animation:burstp var(--dur,.9s) ease-out forwards;
-    }
-    @keyframes burstp{
-      0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:var(--opacity,.9);}
-      100%{transform:translate(var(--vx,0px),var(--vy,80px)) rotate(var(--rot,220deg)) scale(.5);opacity:0;}
-    }
+  /* 落樱花动画：桌面专属 */
+  #petals{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;display:none;}
+  @media (pointer:fine) and (min-width:561px){
+    #petals{display:block;}
+  }
+  .petal{
+    position:absolute;top:-6vh;left:0;pointer-events:none;will-change:transform;
+    animation:fall var(--dur,9s) linear var(--delay,0s) forwards;
+  }
+  @keyframes fall{
+    from{transform:translate3d(0,0,0);}
+    to{transform:translate3d(0,116vh,0);}
+  }
+  .petal i{
+    display:block;width:var(--size,14px);height:var(--size,14px);
+    background:var(--c,linear-gradient(135deg,#ffd9e8,#ff9ec4));
+    border-radius:85% 0 85% 0;
+    opacity:var(--opacity,.8);
+    animation:sway var(--swaydur,3.5s) ease-in-out 0s infinite alternate;
+  }
+  @keyframes sway{
+    from{transform:translateX(calc(var(--sway,30px) * -1)) rotate(0deg);}
+    to{transform:translateX(var(--sway,30px)) rotate(var(--rot,300deg));}
+  }
+  .burst-petal{
+    position:absolute;pointer-events:none;will-change:transform,opacity;
+    width:var(--size,14px);height:var(--size,14px);
+    background:var(--c,linear-gradient(135deg,#ffd9e8,#ff9ec4));
+    border-radius:85% 0 85% 0;
+    opacity:var(--opacity,.85);
+    animation:burstp var(--dur,.9s) ease-out forwards;
+  }
+  @keyframes burstp{
+    0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:var(--opacity,.9);}
+    100%{transform:translate(var(--vx,0px),var(--vy,80px)) rotate(var(--rot,220deg)) scale(.5);opacity:0;}
+  }
 
-    @media (max-width:680px){
-      .topbar .brand span{display:none;}
-    }
-    @media (max-width:560px){
-      .topbar{gap:8px;padding:8px 10px;}
-      .search-sm{flex:1;max-width:none;}
-      .tools{grid-template-columns:1fr;}
-      .wrap{padding:20px 14px 60px;}
-    }
-  </style>
-  </head>
-  <body>
-    <div id="bg"></div>
-    <div id="petals"></div>
-    <header class="topbar">
-      <div class="brand">
-        <svg width="16" height="16" viewBox="0 0 100 100" aria-hidden="true">
-          <rect x="10" y="55" width="18" height="35" rx="4" fill="#2d8659"/>
-          <rect x="41" y="20" width="18" height="70" rx="4" fill="#3ea471"/>
-          <rect x="72" y="40" width="18" height="50" rx="4" fill="#5fcaa0"/>
-          <path d="M20 12l8-8 8 8z" fill="#3ea471"/><path d="M51 12l8-8 8 8z" fill="#5fcaa0"/>
-        </svg>
-        <span>工具箱</span>
-      </div>
-      <div class="search-sm">
-        <span class="mag">🔍</span>
-        <input id="q" type="text" placeholder="搜索工具…" autocomplete="off">
-      </div>
-      <div style="flex:1"></div>
-      <button class="iconbtn" id="tintBtn" type="button" title="切换背景色调（薄荷/抹茶/青瓷）"
-  aria-label="切换背景色调">🎨</button>
-      <button class="iconbtn" id="themeBtn" type="button" title="切换深色模式" aria-label="切换深色模式">🌙</button>
-    </header>
+  @media (max-width:680px){
+    .topbar .brand span{display:none;}
+  }
+  @media (max-width:560px){
+    .topbar{gap:8px;padding:8px 10px;}
+    .search-sm{flex:1;max-width:none;}
+    .tools{grid-template-columns:1fr;}
+    .wrap{padding:20px 14px 60px;}
+  }
 
-    <main class="wrap">
-      <div class="hero">
-        <div class="tag">✨ 亚马逊运营人的专属工具站</div>
-        <h1><span class="g">亚马逊运营工具箱</span></h1>
+  /* ===== 细节打磨：统一圆角/阴影/间距（保留原有风格，仅精修） ===== */
+  :root{ --r-sm:10px; --r-md:14px; --r-lg:18px; }
+  body{ background:linear-gradient(180deg,var(--bg-b) 0%,var(--bg-b) 55%,var(--bg-a) 100%); }
+  .hero h1{ text-wrap:balance; letter-spacing:.5px; }
+  .hero{ position:relative; }
+  /* 卡片：统一圆角、柔化悬停、补按压反馈 */
+  .tool{ border-radius:var(--r-lg); }
+  .tool:hover{ transform:translateY(-3px); box-shadow:0 12px 32px rgba(45,134,89,.15),0 4px 10px rgba(0,0,0,.04); }
+  .tool:active{ transform:translateY(-1px) scale(.99); }
+  /* 输入框 / 按钮 / 胶囊：统一圆角 */
+  .iconbtn{ border-radius:var(--r-sm); }
+  .search-sm input{ border-radius:var(--r-sm); }
+  .recent a{ border-radius:var(--r-sm); }
+  /* 间距微调 */
+  .pills{ margin:24px 0 34px; }
+  .section h2{ letter-spacing:.3px; }
+  .daily{ opacity:.9; }
+
+  /* ===== 浅玻璃·轻盈 卡片（替代渐变瓷块方案，去厚重） ===== */
+  .tool{
+    background:var(--card-bg);
+    backdrop-filter:blur(12px) saturate(1.3);
+    padding:26px 24px;
+    border:1px solid var(--card-border);
+    box-shadow:0 6px 22px rgba(0,60,30,.05);
+    gap:16px;
+  }
+  .tool::after{display:none;}   /* 去掉左侧色条 */
+  /* 图标：小号直接入卡，不套瓷块 */
+  .tool .ic{
+    width:auto;height:auto;border-radius:0;
+    background:transparent;color:inherit;
+    font-size:26px;box-shadow:none;
+  }
+  .tool:hover .ic{transform:none;}
+  /* 悬停：描边转绿 + 柔和光圈 + 轻上浮，名字转绿 */
+  .tool:hover{
+    transform:translateY(-3px);
+    border-color:var(--accent);
+    background:var(--card-bg);
+    box-shadow:0 0 0 3px var(--accent-soft),0 14px 34px rgba(45,134,89,.14);
+  }
+  .tool:hover::before{
+    background:linear-gradient(135deg,rgba(45,134,89,.45) 0%,rgba(110,211,155,.3) 50%,rgba(43,162,156,.4) 100%);
+    opacity:1;
+  }
+  /* 深色：加深玻璃底保证可读性 */
+  [data-theme="dark"] .tool{
+    background:rgba(24,38,30,.72);
+    border-color:var(--card-border);
+  }
+  [data-theme="dark"] .tool:hover{
+    border-color:var(--accent);
+    background:rgba(24,38,30,.72);
+    box-shadow:0 0 0 3px rgba(110,211,155,.16),0 14px 34px rgba(0,0,0,.4);
+  }
+</style>
+  <!-- JS 加载失败时兜底：不让工具卡在 opacity:0 变空白 -->
+  <noscript><style>.tool{opacity:1 !important}#petals{display:none}</style></noscript>
+</head>
+<body>
+  <div id="bg"></div>
+  <div id="petals"></div>
+  <header class="topbar">
+    <div class="brand">
+      <svg width="16" height="16" viewBox="0 0 100 100" aria-hidden="true">
+        <rect x="10" y="55" width="18" height="35" rx="4" fill="#2d8659"/>
+        <rect x="41" y="20" width="18" height="70" rx="4" fill="#3ea471"/>
+        <rect x="72" y="40" width="18" height="50" rx="4" fill="#5fcaa0"/>
+        <path d="M20 12l8-8 8 8z" fill="#3ea471"/><path d="M51 12l8-8 8 8z" fill="#5fcaa0"/>
+      </svg>
+      <span>工具箱</span>
+    </div>
+    <div class="search-sm">
+      <span class="mag">🔍</span>
+      <input id="q" type="text" placeholder="搜索工具…" autocomplete="off">
+    </div>
+    <div style="flex:1"></div>
+    <button class="iconbtn" id="tintBtn" type="button" title="切换背景色调（薄荷/抹茶/青瓷）" aria-label="切换背景色调">🎨</button>
+    <button class="iconbtn" id="themeBtn" type="button" title="切换深色模式" aria-label="切换深色模式">🌙</button>
+  </header>
+
+  <main class="wrap">
+    <div class="hero">
+      <div class="tag">✨ 亚马逊运营人的专属工具站</div>
+      <h1><span class="g">亚马逊运营工具箱</span></h1>
+      <div class="asin-wrap">
+        <div class="asin-jump">
+          <input id="asinInput" type="text" placeholder="输入 ASIN" autocomplete="off" enterkeyhint="go" spellcheck="false" autocapitalize="off">
+          <button id="asinGo" type="button"><span>跳到德站</span><span class="aj-arrow" aria-hidden="true">↗</span></button>
         </div>
-
-      <nav class="pills" id="pills">
-        <button class="pill active" data-cat="all">全部</button>
-        <button class="pill" data-cat="self">🧰 自研工具</button>
-        <button class="pill" data-cat="ops">📊 选品 & 运营</button>
-        <button class="pill" data-cat="design">🎨 图片 & 设计</button>
-      </nav>
-
-      <div class="recent" id="recent">
-        <h2>⏱️ 最近使用</h2>
-        <div class="strip" id="recentStrip"></div>
+        <div class="asin-hint" id="asinHint"></div>
       </div>
+    </div>
 
-      <!-- 自研工具 -->
-      <div class="section" data-cat="self">
-        <h2>🧰 自研工具 <span class="cnt">0</span></h2>
-        <div class="tools">
-          <a href="profit/" class="tool" data-name="利润计算器" data-icon="💰" data-desc="单SKU + 批量核算"
-  data-keywords="成本 售价 毛利 德国 美国">
-            <div class="ic">💰</div><div class="txt"><div class="n">利润计算器</div><div class="d">单SKU +
-  批量核算</div></div>
-          </a>
-          <a href="fba-calculator/" class="tool" data-name="FBA运费计算器" data-icon="🚚" data-desc="德站/美站 ·
-  2026费率" data-keywords="fba 运费 配送 尺寸 重量">
-            <div class="ic">🚚</div><div class="txt"><div class="n">FBA运费计算器</div><div class="d">德站/美站 ·
-  2026费率</div></div>
-          </a>
-          <a href="volumetric-weight/" class="tool" data-name="体积重计算器" data-icon="📦" data-desc="单箱/多箱 ·
-  粘贴导入" data-keywords="体积重 抛重 计费 箱子">
-            <div class="ic">📦</div><div class="txt"><div class="n">体积重计算器</div><div class="d">单箱/多箱 ·
-  粘贴导入</div></div>
-          </a>
-          <a href="listing/" class="tool" data-name="Listing提取器" data-icon="📋" data-desc="德语文案自动提取"
-  data-keywords="listing 文案 德语 五点 标题">
-            <div class="ic">📋</div><div class="txt"><div class="n">Listing提取器</div><div
-  class="d">德语文案自动提取</div></div>
-          </a>
-          <a href="ai-image-tagger/" class="tool" data-name="AI图片标记工具" data-icon="🏷️" data-desc="XMP批量打标 ·
-  GPSR合规" data-keywords="xmp gpsr 图片 标记 合规">
-            <div class="ic">🏷️</div><div class="txt"><div class="n">AI图片标记工具</div><div class="d">XMP批量打标 ·
-  GPSR合规</div></div>
-          </a>
-        </div>
+    <nav class="pills" id="pills">
+      <button class="pill active" data-cat="all">全部</button>
+      <button class="pill" data-cat="self">🧰 自研工具</button>
+      <button class="pill" data-cat="ops">📊 选品 & 运营</button>
+      <button class="pill" data-cat="design">🎨 图片 & 设计</button>
+    </nav>
+
+    <div class="recent" id="recent">
+      <h2>⏱️ 最近使用</h2>
+      <div class="strip" id="recentStrip"></div>
+    </div>
+
+    <!-- 自研工具 -->
+    <div class="section" data-cat="self">
+      <h2>🧰 自研工具 <span class="cnt">0</span></h2>
+      <div class="tools">
+        <a href="profit/" class="tool" data-name="利润计算器" data-icon="💰" data-desc="单SKU + 批量核算" data-keywords="成本 售价 毛利 德国 美国">
+          <div class="ic">💰</div><div class="txt"><div class="n">利润计算器</div><div class="d">单SKU + 批量核算</div></div>
+        </a>
+        <a href="fba-calculator/" class="tool" data-name="FBA运费计算器" data-icon="🚚" data-desc="德站/美站 · 2026费率" data-keywords="fba 运费 配送 尺寸 重量">
+          <div class="ic">🚚</div><div class="txt"><div class="n">FBA运费计算器</div><div class="d">德站/美站 · 2026费率</div></div>
+        </a>
+        <a href="volumetric-weight/" class="tool" data-name="体积重计算器" data-icon="📦" data-desc="单箱/多箱 · 粘贴导入" data-keywords="体积重 抛重 计费 箱子">
+          <div class="ic">📦</div><div class="txt"><div class="n">体积重计算器</div><div class="d">单箱/多箱 · 粘贴导入</div></div>
+        </a>
+        <a href="listing/" class="tool" data-name="Listing提取器" data-icon="📋" data-desc="德语文案自动提取" data-keywords="listing 文案 德语 五点 标题">
+          <div class="ic">📋</div><div class="txt"><div class="n">Listing提取器</div><div class="d">德语文案自动提取</div></div>
+        </a>
+        <a href="ai-image-tagger/" class="tool" data-name="AI图片标记工具" data-icon="🏷️" data-desc="XMP批量打标 · GPSR合规" data-keywords="xmp gpsr 图片 标记 合规">
+          <div class="ic">🏷️</div><div class="txt"><div class="n">AI图片标记工具</div><div class="d">XMP批量打标 · GPSR合规</div></div>
+        </a>
       </div>
+    </div>
 
-      <!-- 选品运营 -->
-      <div class="section" data-cat="ops">
-        <h2>📊 选品 & 运营 <span class="cnt">0</span></h2>
-        <div class="tools">
-          <a href="https://www.sellersprite.com/v3/keyword-miner" target="_blank" rel="noopener" class="tool"
-  data-name="卖家精灵" data-icon="🔍" data-desc="关键词挖掘 · 选品分析" data-keywords="关键词 选品 分析 反查">
-            <div class="ic">🔍</div><div class="txt"><div class="n">卖家精灵 <span class="ext">↗</span></div><div
-  class="d">关键词挖掘 · 选品分析</div></div>
-          </a>
-          <a href="https://www.hsbianma.com/" target="_blank" rel="noopener" class="tool" data-name="HS海关编码"
-  data-icon="🏷️" data-desc="海关编码查询" data-keywords="海关 编码 hs code 报关">
-            <div class="ic">🏷️</div><div class="txt"><div class="n">HS海关编码 <span class="ext">↗</span></div><div
-  class="d">海关编码查询</div></div>
-          </a>
-          <a href="https://www.amazon.com/?mr_donotredirect" target="_blank" rel="noopener" class="tool"
-  data-name="亚马逊美国站" data-icon="🇺🇸" data-desc="Amazon.com" data-keywords="amazon 美国 前台">
-            <div class="ic">🇺🇸</div><div class="txt"><div class="n">亚马逊美国站 <span class="ext">↗</span></div><div
-  class="d">Amazon.com</div></div>
-          </a>
-          <a href="https://www.amazon.de/?mr_donotredirect" target="_blank" rel="noopener" class="tool"
-  data-name="亚马逊德国站" data-icon="🇩🇪" data-desc="Amazon.de" data-keywords="amazon 德国 前台">
-            <div class="ic">🇩🇪</div><div class="txt"><div class="n">亚马逊德国站 <span class="ext">↗</span></div><div
-  class="d">Amazon.de</div></div>
-          </a>
-        </div>
+    <!-- 选品运营 -->
+    <div class="section" data-cat="ops">
+      <h2>📊 选品 & 运营 <span class="cnt">0</span></h2>
+      <div class="tools">
+        <a href="https://www.sellersprite.com/v3/keyword-miner" target="_blank" rel="noopener" class="tool" data-name="卖家精灵" data-icon="🔍" data-desc="关键词挖掘 · 选品分析" data-keywords="关键词 选品 分析 反查">
+          <div class="ic">🔍</div><div class="txt"><div class="n">卖家精灵 <span class="ext">↗</span></div><div class="d">关键词挖掘 · 选品分析</div></div>
+        </a>
+        <a href="https://www.hsbianma.com/" target="_blank" rel="noopener" class="tool" data-name="HS海关编码" data-icon="🏷️" data-desc="海关编码查询" data-keywords="海关 编码 hs code 报关">
+          <div class="ic">🏷️</div><div class="txt"><div class="n">HS海关编码 <span class="ext">↗</span></div><div class="d">海关编码查询</div></div>
+        </a>
+        <a href="https://www.amazon.com/?mr_donotredirect" target="_blank" rel="noopener" class="tool" data-name="亚马逊美国站" data-icon="🇺🇸" data-desc="Amazon.com" data-keywords="amazon 美国 前台">
+          <div class="ic">🇺🇸</div><div class="txt"><div class="n">亚马逊美国站 <span class="ext">↗</span></div><div class="d">Amazon.com</div></div>
+        </a>
+        <a href="https://www.amazon.de/?mr_donotredirect" target="_blank" rel="noopener" class="tool" data-name="亚马逊德国站" data-icon="🇩🇪" data-desc="Amazon.de" data-keywords="amazon 德国 前台">
+          <div class="ic">🇩🇪</div><div class="txt"><div class="n">亚马逊德国站 <span class="ext">↗</span></div><div class="d">Amazon.de</div></div>
+        </a>
       </div>
+    </div>
 
-      <!-- 图片设计 -->
-      <div class="section" data-cat="design">
-        <h2>🎨 图片 & 设计 <span class="cnt">0</span></h2>
-        <div class="tools">
-          <a href="https://www.deepl.com/translator" target="_blank" rel="noopener" class="tool" data-name="DeepL翻译"
-  data-icon="🌐" data-desc="德语文案翻译" data-keywords="deepl 翻译 德语">
-            <div class="ic">🌐</div><div class="txt"><div class="n">DeepL 翻译 <span class="ext">↗</span></div><div
-  class="d">德语文案翻译</div></div>
-          </a>
-          <a href="https://translate.google.com" target="_blank" rel="noopener" class="tool" data-name="Google翻译"
-  data-icon="🔤" data-desc="多语言快速翻译" data-keywords="谷歌 翻译 多语言">
-            <div class="ic">🔤</div><div class="txt"><div class="n">Google 翻译 <span class="ext">↗</span></div><div
-  class="d">多语言快速翻译</div></div>
-          </a>
-          <a href="https://www.canva.com" target="_blank" rel="noopener" class="tool" data-name="Canva" data-icon="🎨"
-  data-desc="主图/A+ 设计" data-keywords="canva 设计 主图 aplus 海报">
-            <div class="ic">🎨</div><div class="txt"><div class="n">Canva <span class="ext">↗</span></div><div
-  class="d">主图/A+ 设计</div></div>
-          </a>
-          <a href="https://www.figma.com" target="_blank" rel="noopener" class="tool" data-name="Figma" data-icon="✏️"
-  data-desc="UI/图片设计" data-keywords="figma ui 设计 原型">
-            <div class="ic">✏️</div><div class="txt"><div class="n">Figma <span class="ext">↗</span></div><div
-  class="d">UI/图片设计</div></div>
-          </a>
-          <a href="https://www.iloveimg.com/zh-cn/resize-image" target="_blank" rel="noopener" class="tool"
-  data-name="图片尺寸修改" data-icon="📐" data-desc="iLoveIMG 批量改尺寸" data-keywords="图片 尺寸 压缩 resize
-  iloveimg">
-            <div class="ic">📐</div><div class="txt"><div class="n">图片尺寸修改 <span class="ext">↗</span></div><div
-  class="d">iLoveIMG 批量改尺寸</div></div>
-          </a>
-          <a href="https://www.remove.bg" target="_blank" rel="noopener" class="tool" data-name="Remove.bg"
-  data-icon="✂️" data-desc="一键抠图去背景" data-keywords="抠图 背景 removebg 透明">
-            <div class="ic">✂️</div><div class="txt"><div class="n">Remove.bg <span class="ext">↗</span></div><div
-  class="d">一键抠图去背景</div></div>
-          </a>
-        </div>
+    <!-- 图片设计 -->
+    <div class="section" data-cat="design">
+      <h2>🎨 图片 & 设计 <span class="cnt">0</span></h2>
+      <div class="tools">
+        <a href="https://www.deepl.com/translator" target="_blank" rel="noopener" class="tool" data-name="DeepL翻译" data-icon="🌐" data-desc="德语文案翻译" data-keywords="deepl 翻译 德语">
+          <div class="ic">🌐</div><div class="txt"><div class="n">DeepL 翻译 <span class="ext">↗</span></div><div class="d">德语文案翻译</div></div>
+        </a>
+        <a href="https://translate.google.com" target="_blank" rel="noopener" class="tool" data-name="Google翻译" data-icon="🔤" data-desc="多语言快速翻译" data-keywords="谷歌 翻译 多语言">
+          <div class="ic">🔤</div><div class="txt"><div class="n">Google 翻译 <span class="ext">↗</span></div><div class="d">多语言快速翻译</div></div>
+        </a>
+        <a href="https://www.canva.com" target="_blank" rel="noopener" class="tool" data-name="Canva" data-icon="🎨" data-desc="主图/A+ 设计" data-keywords="canva 设计 主图 aplus 海报">
+          <div class="ic">🎨</div><div class="txt"><div class="n">Canva <span class="ext">↗</span></div><div class="d">主图/A+ 设计</div></div>
+        </a>
+        <a href="https://www.figma.com" target="_blank" rel="noopener" class="tool" data-name="Figma" data-icon="✏️" data-desc="UI/图片设计" data-keywords="figma ui 设计 原型">
+          <div class="ic">✏️</div><div class="txt"><div class="n">Figma <span class="ext">↗</span></div><div class="d">UI/图片设计</div></div>
+        </a>
+        <a href="https://www.iloveimg.com/zh-cn/resize-image" target="_blank" rel="noopener" class="tool" data-name="图片尺寸修改" data-icon="📐" data-desc="iLoveIMG 批量改尺寸" data-keywords="图片 尺寸 压缩 resize iloveimg">
+          <div class="ic">📐</div><div class="txt"><div class="n">图片尺寸修改 <span class="ext">↗</span></div><div class="d">iLoveIMG 批量改尺寸</div></div>
+        </a>
+        <a href="https://www.remove.bg" target="_blank" rel="noopener" class="tool" data-name="Remove.bg" data-icon="✂️" data-desc="一键抠图去背景" data-keywords="抠图 背景 removebg 透明">
+          <div class="ic">✂️</div><div class="txt"><div class="n">Remove.bg <span class="ext">↗</span></div><div class="d">一键抠图去背景</div></div>
+        </a>
       </div>
+    </div>
 
-      <div class="none" id="none">🔍 没有匹配的工具，换个关键词试试</div>
+    <div class="none" id="none">🔍 没有匹配的工具，换个关键词试试</div>
 
-      <div class="daily" id="dailyTip"></div>
+    <div class="daily" id="dailyTip"></div>
 
-      <footer>亚马逊运营工具箱 · 收藏你的日常工具</footer>
-    </main>
+    <footer>亚马逊运营工具箱 · 收藏你的日常工具</footer>
+  </main>
 
-  <script>
-  (function(){
-    const $ = s => document.querySelector(s);
-    const $$ = s => [...document.querySelectorAll(s)];
-    const tools = $$('.tool');
-    const sections = $$('.section');
-    const pills = $$('.pill');
-    const q = $('#q');
-    const none = $('#none');
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const tools = $$('.tool');
+  const sections = $$('.section');
+  const pills = $$('.pill');
+  const q = $('#q');
+  const none = $('#none');
 
-    // ===== 自动统计分类数量（替代原来手写的 5/4/6） =====
+  // ===== 自动统计分类数量（替代原来手写的 5/4/6） =====
+  sections.forEach(sec=>{
+    const cnt = sec.querySelectorAll('.tool').length;
+    sec.querySelector('.cnt').textContent = cnt;
+  });
+
+  // ===== 首屏统计条 —— 已移除 =====
+
+  // ===== 搜索（卡片级过滤）+ 分类过滤 =====
+  let activeCat = 'all';
+  function apply(){
+    const kw = q.value.trim().toLowerCase();
+    let visible = 0;
     sections.forEach(sec=>{
-      const cnt = sec.querySelectorAll('.tool').length;
-      sec.querySelector('.cnt').textContent = cnt;
+      const cat = sec.dataset.cat;
+      const secVisible = activeCat==='all' || activeCat===cat;
+      let secHit = 0;
+      sec.querySelectorAll('.tool').forEach(t=>{
+        const hay = (t.dataset.name + ' ' + t.dataset.desc + ' ' + (t.dataset.keywords||'')).toLowerCase();
+        const hit = (!kw || hay.includes(kw)) && secVisible;
+        // 直接控制样式，不再依赖任何 data-hidden CSS 规则
+        t.style.display = hit ? '' : 'none';
+        if(hit) secHit++;
+      });
+      if(!secVisible && secHit===0){ sec.style.display = 'none'; return; }
+      sec.style.display = secHit===0 ? 'none' : '';
+      visible += secHit;
     });
+    none.classList.toggle('show', visible===0);
+  }
+  q.addEventListener('input', apply);
+  pills.forEach(p=>p.addEventListener('click', ()=>{
+    pills.forEach(x=>x.classList.remove('active'));
+    p.classList.add('active');
+    activeCat = p.dataset.cat;
+    apply();
+  }));
 
-    // ===== 首屏统计条 —— 已移除 =====
+  // ===== 键盘：/ 聚焦搜索，Esc 清空 =====
+  document.addEventListener('keydown', e=>{
+    if(e.key==='/' && document.activeElement!==q){ e.preventDefault(); q.focus(); }
+    if(e.key==='Escape' && document.activeElement===q){ q.value=''; apply(); q.blur(); }
+  });
 
-    // ===== 搜索（卡片级过滤）+ 分类过滤 =====
-    let activeCat = 'all';
-    function apply(){
-      const kw = q.value.trim().toLowerCase();
-      let visible = 0;
-      sections.forEach(sec=>{
-        const cat = sec.dataset.cat;
-        const secVisible = activeCat==='all' || activeCat===cat;
-        let secHit = 0;
-        sec.querySelectorAll('.tool').forEach(t=>{
-          const hay = (t.dataset.name + ' ' + t.dataset.desc + ' ' + (t.dataset.keywords||'')).toLowerCase();
-          const hit = (!kw || hay.includes(kw)) && secVisible;
-          // 直接控制样式，不再依赖任何 data-hidden CSS 规则
-          t.style.display = hit ? '' : 'none';
-          if(hit) secHit++;
-        });
-        if(!secVisible && secHit===0){ sec.style.display = 'none'; return; }
-        sec.style.display = secHit===0 ? 'none' : '';
-        visible += secHit;
-      });
-      none.classList.toggle('show', visible===0);
+  // ===== 最近使用 =====
+  const RECENT_KEY = 'toolbox_recent';
+  const RECENT_MAX = 4;   // 控制堆积数量上限
+  function loadRecent(){
+    try{ return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; }catch(e){ return []; }
+  }
+  function renderRecent(){
+    const list = loadRecent();
+    const box = $('#recent'), strip = $('#recentStrip');
+    if(!list.length){ box.classList.remove('show'); return; }
+    box.classList.add('show');
+    strip.innerHTML = list.map(r=>
+      `<a href="${r.href}" ${r.href.startsWith('http')?'target="_blank" rel="noopener"':''}>
+         <span>${r.icon}</span><span>${r.name}</span><span style="opacity:.4;font-size:11px">${r.href.startsWith('http')?'↗':''}</span>
+       </a>`).join('');
+  }
+  function record(t){
+    if(!t.dataset.name) return;
+    const item = { name:t.dataset.name, icon:t.dataset.icon, desc:t.dataset.desc,
+                   href:t.getAttribute('href').split('?')[0] };
+    let list = loadRecent().filter(x=>x.href!==item.href);
+    list.unshift(item);
+    list = list.slice(0, RECENT_MAX);
+    try{ localStorage.setItem(RECENT_KEY, JSON.stringify(list)); }catch(e){}
+  }
+  tools.forEach(t=>t.addEventListener('click', ()=>{ record(t); renderRecent(); }));
+  renderRecent();
+
+  // ===== ASIN → 亚马逊德国站 快速跳转 =====
+  const asinInput = document.getElementById('asinInput');
+  const asinBtn = document.getElementById('asinGo');
+  const asinHint = document.getElementById('asinHint');
+  function extractAsin(raw){
+    raw = (raw||'').trim();
+    if(!raw) return null;
+    // 直接是纯 ASIN（10 位字母数字）
+    if(/^[A-Z0-9]{10}$/i.test(raw)) return raw.toUpperCase();
+    // 粘贴的是链接：优先取 dp/ 或 product/ 后面的 10 位
+    const m = raw.match(/(?:dp|product|gp\/product)\/(?:\/en\/)?([A-Z0-9]{10})/i);
+    if(m) return m[1].toUpperCase();
+    // 兜底：任意位置抓 10 位字母数字
+    const m2 = raw.match(/\b([A-Z0-9]{10})\b/i);
+    if(m2) return m2[1].toUpperCase();
+    return null;
+  }
+  function goAsin(){
+    const asin = extractAsin(asinInput.value);
+    if(!asin){
+      asinHint.textContent = '未能识别 ASIN，请输入 10 位 ASIN 或完整商品链接';
+      asinHint.className = 'asin-hint';
+      asinInput.focus();
+      return;
     }
-    q.addEventListener('input', apply);
-    pills.forEach(p=>p.addEventListener('click', ()=>{
-      pills.forEach(x=>x.classList.remove('active'));
-      p.classList.add('active');
-      activeCat = p.dataset.cat;
-      apply();
-    }));
-
-    // ===== 键盘：/ 聚焦搜索，Esc 清空 =====
-    document.addEventListener('keydown', e=>{
-      if(e.key==='/' && document.activeElement!==q){ e.preventDefault(); q.focus(); }
-      if(e.key==='Escape' && document.activeElement===q){ q.value=''; apply(); q.blur(); }
+    asinInput.value = asin;
+    asinHint.textContent = '已打开 amazon.de/dp/' + asin + ' ↗';
+    asinHint.className = 'asin-hint ok';
+    setTimeout(()=>{ asinHint.textContent = ''; }, 4000);
+    // noopener 防止反向 tab 劫持
+    window.open('https://www.amazon.de/dp/' + asin + '?mr_donotredirect', '_blank', 'noopener');
+  }
+  if(asinBtn) asinBtn.addEventListener('click', goAsin);
+  if(asinInput){
+    asinInput.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ e.preventDefault(); goAsin(); }
     });
+  }
 
-    // ===== 最近使用 =====
-    const RECENT_KEY = 'toolbox_recent';
-    const RECENT_MAX = 4;   // 控制堆积数量上限
-    function loadRecent(){
-      try{ return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; }catch(e){ return []; }
-    }
-    function renderRecent(){
-      const list = loadRecent();
-      const box = $('#recent'), strip = $('#recentStrip');
-      if(!list.length){ box.classList.remove('show'); return; }
-      box.classList.add('show');
-      strip.innerHTML = list.map(r=>
-        `<a href="${r.href}" ${r.href.startsWith('http')?'target="_blank" rel="noopener"':''}>
-           <span>${r.icon}</span><span>${r.name}</span><span
-  style="opacity:.4;font-size:11px">${r.href.startsWith('http')?'↗':''}</span>
-         </a>`).join('');
-    }
-    function record(t){
-      if(!t.dataset.name) return;
-      const item = { name:t.dataset.name, icon:t.dataset.icon, desc:t.dataset.desc,
-                     href:t.getAttribute('href').split('?')[0] };
-      let list = loadRecent().filter(x=>x.href!==item.href);
-      list.unshift(item);
-      list = list.slice(0, RECENT_MAX);
-      try{ localStorage.setItem(RECENT_KEY, JSON.stringify(list)); }catch(e){}
-    }
-    tools.forEach(t=>t.addEventListener('click', ()=>{ record(t); renderRecent(); }));
-    renderRecent();
-
-    // ===== 主题 =====
-    const themeBtn = $('#themeBtn');
-    const tintBtn = $('#tintBtn');
-    function setTheme(mode){
-      document.documentElement.setAttribute('data-theme', mode);
-      themeBtn.textContent = mode==='dark' ? '☀️' : '🌙';
-      themeBtn.title = mode==='dark' ? '切换浅色模式' : '切换深色模式';
-      themeBtn.setAttribute('aria-label', themeBtn.title);
-      try{ localStorage.setItem('toolbox_theme', mode); }catch(e){}
-    }
-    (function initTheme(){
-      const saved = localStorage.getItem('toolbox_theme');
-      const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
-      setTheme(saved || (prefersDark ? 'dark' : 'light'));
-    })();
-    themeBtn.addEventListener('click', ()=>{
-      const cur = document.documentElement.getAttribute('data-theme');
-      setTheme(cur==='dark' ? 'light' : 'dark');
-    });
-
-    // ===== 背景色调预设切换 =====
-    const TINTS = ['mint','matcha','celadon'];
-    const TINT_NAME = { mint:'薄荷', matcha:'抹茶', celadon:'青瓷' };
-    function setTint(t){
-      document.documentElement.setAttribute('data-tint', t);
-      try{ localStorage.setItem('toolbox_tint', t); }catch(e){}
-    }
-    (function(){
-      const saved = localStorage.getItem('toolbox_tint');
-      if(saved && TINTS.includes(saved)) setTint(saved);
-    })();
-    if(tintBtn){
-      tintBtn.title = '背景色调：' + (TINT_NAME[document.documentElement.getAttribute('data-tint')||'mint']) +
-  '（点击切换）';
-      tintBtn.setAttribute('aria-label', tintBtn.title);
-      tintBtn.addEventListener('click', ()=>{
-        const cur = document.documentElement.getAttribute('data-tint') || 'mint';
-        const next = TINTS[(TINTS.indexOf(cur) + 1) % TINTS.length];
-        setTint(next);
-        const label = '背景色调：' + TINT_NAME[next] + '（点击切换）';
-        tintBtn.title = label;
-        tintBtn.setAttribute('aria-label', label);
-      });
-    }
-
-    // ===== 滚动时顶栏浮现磨砂底 =====
-    const topbar = document.querySelector('.topbar');
-    function onScroll(){ topbar.classList.toggle('scrolled', window.scrollY > 20); }
-    window.addEventListener('scroll', onScroll, { passive:true });
-    onScroll();
-
-    // ===== 背景轮播 =====
-    const BGS = ['bg.jpg'];
-    const bgLayer = document.getElementById('bg');
-    BGS.forEach(src=>{
-      const d = document.createElement('div');
-      d.className = 'bg-slide';
-      d.style.backgroundImage = 'url("' + src + '")';
-      bgLayer.appendChild(d);
-    });
-    const bgSlides = bgLayer.querySelectorAll('.bg-slide');
-    let bgIdx = 0;
-    if(bgSlides.length){ bgSlides[0].classList.add('active'); }
-    if(bgSlides.length > 1){
-      setInterval(()=>{
-        bgSlides[bgIdx].classList.remove('active');
-        bgIdx = (bgIdx + 1) % bgSlides.length;
-        bgSlides[bgIdx].classList.add('active');
-      }, 6000);
-    }
-
-    // ===== 落樱花动画（仅在支持细指针且非窄屏时运行） =====
-    const petalLayer = document.getElementById('petals');
-    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const finePointer = matchMedia('(pointer:fine)').matches;
-    const isWide = innerWidth >= 561;
-    const enablePetalFx = !reduceMotion && finePointer && isWide;
-
-    const PETAL_COLORS = [
-      'linear-gradient(135deg,#ffd9e8,#ff9ec4)',
-      'linear-gradient(135deg,#ffe3ee,#ffb7d5)',
-      'linear-gradient(135deg,#ffc9dd,#ff8ab8)'
-    ];
-    function spawnPetal(){
-      const p = document.createElement('div');
-      p.className = 'petal';
-      const size = 9 + Math.random()*13;
-      const dur = 7 + Math.random()*7;
-      const delay = -Math.random()*dur;
-      const sway = 25 + Math.random()*60;
-      const swaydur = 2.5 + Math.random()*3;
-      const rot = 180 + Math.random()*420;
-      const op = (0.55 + Math.random()*0.4).toFixed(2);
-      const c = PETAL_COLORS[(Math.random()*PETAL_COLORS.length)|0];
-      p.style.left = (Math.random()*100).toFixed(1) + 'vw';
-      p.style.setProperty('--dur', dur + 's');
-      p.style.setProperty('--delay', delay + 's');
-      p.style.setProperty('--size', size + 'px');
-      p.style.setProperty('--sway', sway + 'px');
-      p.style.setProperty('--swaydur', swaydur + 's');
-      p.style.setProperty('--rot', rot + 'deg');
-      p.style.setProperty('--opacity', op);
-      p.innerHTML = '<i style="--c:' + c + '"></i>';
-      petalLayer.appendChild(p);
-      setTimeout(()=>p.remove(), dur * 1000 + 400);
-    }
-    function petalLoop(){
-      spawnPetal();
-      setTimeout(petalLoop, 120 + Math.random()*260);
-    }
-    let petalTimer = null;
-    if(enablePetalFx){
-      petalTimer = setTimeout(petalLoop, 100);
-    }
-    // 窗口缩放导致动效开关变化时，动态启停
-    addEventListener('resize', ()=>{
-      const shouldRun = !reduceMotion && finePointer && innerWidth >= 561;
-      if(shouldRun && !petalTimer){
-        petalTimer = setTimeout(petalLoop, 100);
-      } else if(!shouldRun && petalTimer){
-        clearTimeout(petalTimer);
-        petalTimer = null;
-        petalLayer.innerHTML = '';   // 清掉已落下的花瓣
-      }
-    });
-
-    // ===== 卡片错峰入场动画 =====
-    if(!reduceMotion){
-      tools.forEach((t,i)=>{
-        t.style.animationDelay = (i*45) + 'ms';
-        t.classList.add('rise');
-      });
-      setTimeout(()=>document.body.classList.add('ready'), 1500);
-    } else {
-      tools.forEach(t=>{ t.style.opacity = '1'; });
-      document.body.classList.add('ready');
-    }
-
-    // ===== 背景滚动视差（仅在宽屏、无动效偏好下启用） =====
-    const bgEl = document.getElementById('bg');
-    if(bgEl && !reduceMotion && finePointer && isWide){
-      let ticking = false;
-      function onParallax(){
-        if(ticking) return;
-        ticking = true;
-        requestAnimationFrame(()=>{
-          const maxShift = innerHeight * 0.2;
-          const shift = Math.min(scrollY * 0.18, maxShift);
-          bgEl.style.transform = 'translate3d(0,' + (-shift) + 'px,0)';
-          ticking = false;
-        });
-      }
-      addEventListener('scroll', onParallax, { passive:true });
-      onParallax();
-    }
-
-    // ===== 点击炸花 / 鼠标扫花（仅动效开启时绑定） =====
-    function burstPetal(x, y, ang){
-      const p = document.createElement('div');
-      p.className = 'burst-petal';
-      if(ang === undefined) ang = Math.random() * Math.PI * 2;
-      const dist = 55 + Math.random() * 95;
-      p.style.left = x + 'px';
-      p.style.top = y + 'px';
-      p.style.setProperty('--vx', (Math.cos(ang)*dist).toFixed(0) + 'px');
-      p.style.setProperty('--vy', (Math.sin(ang)*dist + 20).toFixed(0) + 'px');
-      p.style.setProperty('--rot', (150 + Math.random()*450) + 'deg');
-      p.style.setProperty('--size', (9 + Math.random()*12) + 'px');
-      p.style.setProperty('--dur', (0.6 + Math.random()*0.45) + 's');
-      p.style.setProperty('--opacity', (0.65 + Math.random()*0.35).toFixed(2));
-      p.style.setProperty('--c', PETAL_COLORS[(Math.random()*PETAL_COLORS.length)|0]);
-      petalLayer.appendChild(p);
-      setTimeout(()=>p.remove(), 1400);
-    }
-    if(enablePetalFx){
-      document.addEventListener('click', e=>{
-        if(e.target.closest('a,button,input,label')) return;
-        const n = 11 + (Math.random()*6|0);
-        const base = Math.random() * Math.PI * 2;
-        for(let i=0;i<n;i++){
-          const ang = base + (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
-          burstPetal(e.clientX, e.clientY, ang);
-        }
-      });
-      let lastSweep = 0;
-      document.addEventListener('mousemove', e=>{
-        const now = performance.now();
-        if(now - lastSweep < 110) return;
-        lastSweep = now;
-        if(e.target.closest('a,button,input,label')) return;
-        burstPetal(e.clientX + (Math.random()*44-22), e.clientY + (Math.random()*36-18));
-      });
-    }
-
-    // ===== 每日一签 / 运营小贴士 =====
-    const TIPS = [
-      '今天宜：检查 A+ 主图是否含必要的合规信息',
-      '今天宜：核对 Listing 五点里是否埋了核心关键词',
-      '今天宜：看一眼竞品价格波动（试试 Keepa）',
-      '今天宜：清理一批差评里的真实痛点',
-      'VAT 报税截止前，记得预留 1-2 天缓冲',
-      '今天宜：检查主图是否有 2000px 以上大图',
-      '存货紧张时，优先补货爆款 SKU',
-      '今天宜：回复客户消息，别让响应率掉下来',
-      '广告 ACOS 偏高时，先否定无效词再调价',
-      '今天宜：备份最新的 Listing 文案版本',
-      '发货前确认 FNSKU 标签清晰可扫',
-      '今天宜：研究一个竞品的差评，反推改进点',
-      '文案里多用「你」，少用「我们」，转化更高',
-      '主图背景尽量纯色，主体占画面 85%',
-      '今天宜：检查德国站的 WEEE / 电池法合规'
-    ];
-    const dailyEl = document.getElementById('dailyTip');
-    if(dailyEl){
-      const now = new Date();
-      const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-      dailyEl.textContent = '🍀 点我换一条 · ' + TIPS[dayOfYear % TIPS.length];
-      let currentTip = dayOfYear % TIPS.length;
-      dailyEl.style.cursor = 'pointer';
-      dailyEl.addEventListener('click', ()=>{
-        currentTip = (currentTip + 1) % TIPS.length;
-        dailyEl.textContent = '🍀 点我换一条 · ' + TIPS[currentTip];
-      });
-    }
+  // ===== 主题 =====
+  const themeBtn = $('#themeBtn');
+  const tintBtn = $('#tintBtn');
+  function setTheme(mode){
+    document.documentElement.setAttribute('data-theme', mode);
+    themeBtn.textContent = mode==='dark' ? '☀️' : '🌙';
+    themeBtn.title = mode==='dark' ? '切换浅色模式' : '切换深色模式';
+    themeBtn.setAttribute('aria-label', themeBtn.title);
+    try{ localStorage.setItem('toolbox_theme', mode); }catch(e){}
+  }
+  (function initTheme(){
+    const saved = localStorage.getItem('toolbox_theme');
+    const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+    setTheme(saved || (prefersDark ? 'dark' : 'light'));
   })();
-  </script>
-  </body>
-  </html>
+  themeBtn.addEventListener('click', ()=>{
+    const cur = document.documentElement.getAttribute('data-theme');
+    setTheme(cur==='dark' ? 'light' : 'dark');
+  });
+
+  // ===== 背景色调预设切换 =====
+  const TINTS = ['mint','matcha','celadon'];
+  const TINT_NAME = { mint:'薄荷', matcha:'抹茶', celadon:'青瓷' };
+  function setTint(t){
+    document.documentElement.setAttribute('data-tint', t);
+    try{ localStorage.setItem('toolbox_tint', t); }catch(e){}
+  }
+  (function(){
+    const saved = localStorage.getItem('toolbox_tint');
+    if(saved && TINTS.includes(saved)) setTint(saved);
+  })();
+  if(tintBtn){
+    tintBtn.title = '背景色调：' + (TINT_NAME[document.documentElement.getAttribute('data-tint')||'mint']) + '（点击切换）';
+    tintBtn.setAttribute('aria-label', tintBtn.title);
+    tintBtn.addEventListener('click', ()=>{
+      const cur = document.documentElement.getAttribute('data-tint') || 'mint';
+      const next = TINTS[(TINTS.indexOf(cur) + 1) % TINTS.length];
+      setTint(next);
+      const label = '背景色调：' + TINT_NAME[next] + '（点击切换）';
+      tintBtn.title = label;
+      tintBtn.setAttribute('aria-label', label);
+    });
+  }
+
+  // ===== 滚动时顶栏浮现磨砂底 =====
+  const topbar = document.querySelector('.topbar');
+  function onScroll(){ topbar.classList.toggle('scrolled', window.scrollY > 20); }
+  window.addEventListener('scroll', onScroll, { passive:true });
+  onScroll();
+
+  // ===== 背景轮播 =====
+  const BGS = ['bg.jpg'];
+  const bgLayer = document.getElementById('bg');
+  BGS.forEach(src=>{
+    const d = document.createElement('div');
+    d.className = 'bg-slide';
+    d.style.backgroundImage = 'url("' + src + '")';
+    bgLayer.appendChild(d);
+  });
+  const bgSlides = bgLayer.querySelectorAll('.bg-slide');
+  let bgIdx = 0;
+  if(bgSlides.length){ bgSlides[0].classList.add('active'); }
+  if(bgSlides.length > 1){
+    setInterval(()=>{
+      bgSlides[bgIdx].classList.remove('active');
+      bgIdx = (bgIdx + 1) % bgSlides.length;
+      bgSlides[bgIdx].classList.add('active');
+    }, 6000);
+  }
+
+  // ===== 落樱花动画（仅在支持细指针且非窄屏时运行） =====
+  const petalLayer = document.getElementById('petals');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = matchMedia('(pointer:fine)').matches;
+  const isWide = innerWidth >= 561;
+  const enablePetalFx = !reduceMotion && finePointer && isWide;
+
+  const PETAL_COLORS = [
+    'linear-gradient(135deg,#ffd9e8,#ff9ec4)',
+    'linear-gradient(135deg,#ffe3ee,#ffb7d5)',
+    'linear-gradient(135deg,#ffc9dd,#ff8ab8)'
+  ];
+  function spawnPetal(){
+    const p = document.createElement('div');
+    p.className = 'petal';
+    const size = 9 + Math.random()*13;
+    const dur = 7 + Math.random()*7;
+    const delay = -Math.random()*dur;
+    const sway = 25 + Math.random()*60;
+    const swaydur = 2.5 + Math.random()*3;
+    const rot = 180 + Math.random()*420;
+    const op = (0.55 + Math.random()*0.4).toFixed(2);
+    const c = PETAL_COLORS[(Math.random()*PETAL_COLORS.length)|0];
+    p.style.left = (Math.random()*100).toFixed(1) + 'vw';
+    p.style.setProperty('--dur', dur + 's');
+    p.style.setProperty('--delay', delay + 's');
+    p.style.setProperty('--size', size + 'px');
+    p.style.setProperty('--sway', sway + 'px');
+    p.style.setProperty('--swaydur', swaydur + 's');
+    p.style.setProperty('--rot', rot + 'deg');
+    p.style.setProperty('--opacity', op);
+    p.innerHTML = '<i style="--c:' + c + '"></i>';
+    petalLayer.appendChild(p);
+    setTimeout(()=>p.remove(), dur * 1000 + 400);
+  }
+  function petalLoop(){
+    spawnPetal();
+    setTimeout(petalLoop, 120 + Math.random()*260);
+  }
+  let petalTimer = null;
+  if(enablePetalFx){
+    petalTimer = setTimeout(petalLoop, 100);
+  }
+  // 窗口缩放导致动效开关变化时，动态启停
+  addEventListener('resize', ()=>{
+    const shouldRun = !reduceMotion && finePointer && innerWidth >= 561;
+    if(shouldRun && !petalTimer){
+      petalTimer = setTimeout(petalLoop, 100);
+    } else if(!shouldRun && petalTimer){
+      clearTimeout(petalTimer);
+      petalTimer = null;
+      petalLayer.innerHTML = '';   // 清掉已落下的花瓣
+    }
+  });
+
+  // ===== 卡片错峰入场动画 =====
+  if(!reduceMotion){
+    tools.forEach((t,i)=>{
+      t.style.animationDelay = (i*45) + 'ms';
+      t.classList.add('rise');
+    });
+    setTimeout(()=>document.body.classList.add('ready'), 1500);
+  } else {
+    tools.forEach(t=>{ t.style.opacity = '1'; });
+    document.body.classList.add('ready');
+  }
+
+  // ===== 背景滚动视差（仅在宽屏、无动效偏好下启用） =====
+  const bgEl = document.getElementById('bg');
+  if(bgEl && !reduceMotion && finePointer && isWide){
+    let ticking = false;
+    function onParallax(){
+      if(ticking) return;
+      ticking = true;
+      requestAnimationFrame(()=>{
+        const maxShift = innerHeight * 0.2;
+        const shift = Math.min(scrollY * 0.18, maxShift);
+        bgEl.style.transform = 'translate3d(0,' + (-shift) + 'px,0)';
+        ticking = false;
+      });
+    }
+    addEventListener('scroll', onParallax, { passive:true });
+    onParallax();
+  }
+
+  // ===== 点击炸花 / 鼠标扫花（仅动效开启时绑定） =====
+  function burstPetal(x, y, ang){
+    const p = document.createElement('div');
+    p.className = 'burst-petal';
+    if(ang === undefined) ang = Math.random() * Math.PI * 2;
+    const dist = 55 + Math.random() * 95;
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.style.setProperty('--vx', (Math.cos(ang)*dist).toFixed(0) + 'px');
+    p.style.setProperty('--vy', (Math.sin(ang)*dist + 20).toFixed(0) + 'px');
+    p.style.setProperty('--rot', (150 + Math.random()*450) + 'deg');
+    p.style.setProperty('--size', (9 + Math.random()*12) + 'px');
+    p.style.setProperty('--dur', (0.6 + Math.random()*0.45) + 's');
+    p.style.setProperty('--opacity', (0.65 + Math.random()*0.35).toFixed(2));
+    p.style.setProperty('--c', PETAL_COLORS[(Math.random()*PETAL_COLORS.length)|0]);
+    petalLayer.appendChild(p);
+    setTimeout(()=>p.remove(), 1400);
+  }
+  if(enablePetalFx){
+    document.addEventListener('click', e=>{
+      if(e.target.closest('a,button,input,label')) return;
+      const n = 11 + (Math.random()*6|0);
+      const base = Math.random() * Math.PI * 2;
+      for(let i=0;i<n;i++){
+        const ang = base + (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
+        burstPetal(e.clientX, e.clientY, ang);
+      }
+    });
+    let lastSweep = 0;
+    document.addEventListener('mousemove', e=>{
+      const now = performance.now();
+      if(now - lastSweep < 110) return;
+      lastSweep = now;
+      if(e.target.closest('a,button,input,label')) return;
+      burstPetal(e.clientX + (Math.random()*44-22), e.clientY + (Math.random()*36-18));
+    });
+  }
+
+  // ===== 每日一签 / 运营小贴士 =====
+  const TIPS = [
+    '今天宜：检查 A+ 主图是否含必要的合规信息',
+    '今天宜：核对 Listing 五点里是否埋了核心关键词',
+    '今天宜：看一眼竞品价格波动（试试 Keepa）',
+    '今天宜：清理一批差评里的真实痛点',
+    'VAT 报税截止前，记得预留 1-2 天缓冲',
+    '今天宜：检查主图是否有 2000px 以上大图',
+    '存货紧张时，优先补货爆款 SKU',
+    '今天宜：回复客户消息，别让响应率掉下来',
+    '广告 ACOS 偏高时，先否定无效词再调价',
+    '今天宜：备份最新的 Listing 文案版本',
+    '发货前确认 FNSKU 标签清晰可扫',
+    '今天宜：研究一个竞品的差评，反推改进点',
+    '文案里多用「你」，少用「我们」，转化更高',
+    '主图背景尽量纯色，主体占画面 85%',
+    '今天宜：检查德国站的 WEEE / 电池法合规'
+  ];
+  const dailyEl = document.getElementById('dailyTip');
+  if(dailyEl){
+    const now = new Date();
+    const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+    dailyEl.textContent = '🍀 点我换一条 · ' + TIPS[dayOfYear % TIPS.length];
+    let currentTip = dayOfYear % TIPS.length;
+    dailyEl.style.cursor = 'pointer';
+    dailyEl.addEventListener('click', ()=>{
+      currentTip = (currentTip + 1) % TIPS.length;
+      dailyEl.textContent = '🍀 点我换一条 · ' + TIPS[currentTip];
+    });
+  }
+})();
+</script>
+<!-- Xiaoxing 3D companion -->
+<script defer src="./xiaoxing/pet.js?v=1"></script>
+</body>
+</html>
