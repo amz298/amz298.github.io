@@ -406,8 +406,14 @@ body {
 
   // ---------- 持久化 ----------
   function loadJSON(key, fallback) {
-    try { return { ...fallback, ...(JSON.parse(localStorage.getItem(key) || 'null') || {}) }; }
-    catch { return { ...fallback }; }
+    const clone = (v) => (Array.isArray(v) ? v.slice() : { ...v });
+    let v = null;
+    try { v = JSON.parse(localStorage.getItem(key) || 'null'); }
+    catch (e) { v = null; }
+    if (v == null) return clone(fallback);
+    // 数组类型必须按数组读；存坏了（对象/字符串）就重置，避免 {...[]} 退化成 {} 导致 .push 崩溃
+    if (Array.isArray(fallback)) return Array.isArray(v) ? v : clone(fallback);
+    return { ...fallback, ...v };
   }
   function saveJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
@@ -839,15 +845,7 @@ body {
   }
   window.__tapSend = triggerSend;
   el.send.addEventListener('click', (e) => { e.preventDefault(); triggerSend(); });
-  el.send.addEventListener('touchend', (e) => { triggerSend(); });
-  el.send.addEventListener('pointerup', (e) => { triggerSend(); });
   el.composer.addEventListener('submit', (e) => { e.preventDefault(); triggerSend(); });
-  document.addEventListener('click', function (e) {
-    if (e.target && e.target.closest && e.target.closest('#send')) triggerSend();
-  }, true);
-  document.addEventListener('touchend', function (e) {
-    if (e.target && e.target.closest && e.target.closest('#send')) triggerSend();
-  }, true);
   el.input.addEventListener('input', autosize);
   el.input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
