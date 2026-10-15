@@ -228,7 +228,14 @@
       d.className = 'dbg';
       document.body.appendChild(d);
     }
-    d.textContent = '调试 · ' + msg;
+    const t = new Date();
+    const hh = ('0' + t.getHours()).slice(-2);
+    const mm = ('0' + t.getMinutes()).slice(-2);
+    const ss = ('0' + t.getSeconds()).slice(-2);
+    d._log = d._log || [];
+    d._log.push(hh + ':' + mm + ':' + ss + ' ' + msg);
+    if (d._log.length > 8) d._log = d._log.slice(-8);
+    d.textContent = '调试 · ' + d._log.join('\n');
   }
 
   // ---------- 对话样例解析 ----------
@@ -480,7 +487,7 @@
   let lastSend = 0;
   function triggerSend() {
     const now = Date.now();
-    if (now - lastSend < 300) { dbg('300ms 内重复触发，忽略'); return; }
+    if (now - lastSend < 300) { try { console.log('[dbg] 300ms内重复触发，忽略'); } catch {} return; }
     lastSend = now;
     dbg('触发发送');
     send();
