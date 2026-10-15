@@ -1,6 +1,6 @@
 // 注意：这个 service worker 只缓存 App 壳子（静态文件）。
 // 聊天内容和 API key 都存在设备 localStorage 里，不会被缓存到别处。
-const CACHE = 'ai-companion-v5';
+const CACHE = 'ai-companion-v6';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (e) => {

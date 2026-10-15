@@ -96,6 +96,21 @@ body {
   background: rgba(0,0,0,.04);
   border-radius: 6px;
 }
+.toast {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,.78);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 30;
+  display: none;
+  pointer-events: none;
+  white-space: nowrap;
+}
 
 /* 输入区 */
 .composer {

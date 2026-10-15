@@ -205,6 +205,20 @@
     el.chat.scrollTop = el.chat.scrollHeight;
   }
 
+  let toastTimer = null;
+  function flashToast(msg) {
+    let t = document.getElementById('toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'toast'; t.className = 'toast';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1800);
+  }
+
   // ---------- 对话样例解析 ----------
   function parseExamples(raw) {
     const out = [];
@@ -289,8 +303,12 @@
 
   async function send() {
     if (!configured()) syncFromFields();
+    if (busy) return;
     const text = el.input.value.trim();
-    if ((!text && pendingImages.length === 0) || busy) return;
+    if (!text && pendingImages.length === 0) {
+      flashToast('输入框是空的（' + el.input.value.length + ' 个字符），先打字再发送');
+      return;
+    }
     if (!configured()) {
       openSettings();
       el.connResult.hidden = false;
@@ -441,8 +459,16 @@
   }
 
   // ---------- 事件 ----------
-  el.send.addEventListener('click', (e) => { e.preventDefault(); send(); });
-  el.composer.addEventListener('submit', (e) => { e.preventDefault(); send(); });
+  let lastSend = 0;
+  function triggerSend() {
+    const now = Date.now();
+    if (now - lastSend < 300) return;
+    lastSend = now;
+    send();
+  }
+  el.send.addEventListener('click', (e) => { e.preventDefault(); triggerSend(); });
+  el.send.addEventListener('pointerup', (e) => { e.preventDefault(); triggerSend(); });
+  el.composer.addEventListener('submit', (e) => { e.preventDefault(); triggerSend(); });
   el.input.addEventListener('input', autosize);
   el.input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
