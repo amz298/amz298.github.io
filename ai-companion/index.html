@@ -254,6 +254,20 @@ body {
 .conn-result.ok { color: var(--green); }
 .conn-result.err { color: var(--danger); }
 .footnote { font-size: 11px; color: var(--muted); line-height: 1.5; margin: 0; }
+
+/* 调试横幅（排查用，问题解决后可删） */
+.dbg {
+  position: fixed; left: 0; right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 58px);
+  padding: 5px 12px;
+  font-size: 12px; line-height: 1.55;
+  color: #c0392b;
+  background: rgba(255,247,230,.97);
+  border-top: 1px solid #f0d9a8; border-bottom: 1px solid #f0d9a8;
+  pointer-events: none;
+  white-space: pre-wrap; word-break: break-all;
+  z-index: 19;
+}
   </style>
 </head>
 <body>
@@ -276,7 +290,7 @@ body {
       </div>
       <button type="button" id="imgBtn" class="tool" title="发图片/拍一张">＋</button>
       <input type="file" id="fileInput" accept="image/*" multiple hidden />
-      <button id="send" type="submit" class="send-btn" onclick="if(window.__tapSend)window.__tapSend()">发送</button>
+      <button id="send" type="button" class="send-btn" onclick="if(window.__tapSend)window.__tapSend()">发送</button>
     </div>
   </form>
 
@@ -370,6 +384,25 @@ body {
   let history = loadJSON(HIST_KEY, []);   // [{role, content, images?:[dataUri]}]
   let pendingImages = [];                 // 待发送的图片 dataUri
   let busy = false;
+
+  // ---------- 屏幕内调试 + 错误兜底（排查用，之后可删） ----------
+  function dbg(msg) {
+    try { console.log('[dbg]', msg); } catch (e) {}
+    let d = document.getElementById('dbg');
+    if (!d) { d = document.createElement('div'); d.id = 'dbg'; d.className = 'dbg'; document.body.appendChild(d); }
+    const t = new Date();
+    const p = function (n) { return ('0' + n).slice(-2); };
+    d._log = d._log || [];
+    d._log.push(p(t.getHours()) + ':' + p(t.getMinutes()) + ':' + p(t.getSeconds()) + ' ' + msg);
+    if (d._log.length > 10) d._log = d._log.slice(-10);
+    d.textContent = '调试 · ' + d._log.join('\n');
+  }
+  window.addEventListener('error', function (e) {
+    try { dbg('JS错误: ' + (e.message || e.type) + ' @行' + e.lineno); } catch (x) {}
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    try { dbg('未处理异常: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason))); } catch (x) {}
+  });
 
   // ---------- 持久化 ----------
   function loadJSON(key, fallback) {
@@ -635,8 +668,9 @@ body {
   }
 
   async function send() {
+    dbg('send进入 | 输入=' + el.input.value.length + '字 | busy=' + busy + ' | 配置=' + configured());
     if (!configured()) syncFromFields();
-    if (busy) return;
+    if (busy) { dbg('busy=true 中止'); return; }
     const text = el.input.value.trim();
     if (!text && pendingImages.length === 0) {
       flashToast('输入框是空的，先打字再发送');
@@ -659,6 +693,7 @@ body {
     if (images.length) msg.images = images;
     history.push(msg);
     addBubble('me', text, images);
+    dbg('已上屏绿气泡，准备请求');
     el.input.value = '';
     autosize();
     saveHistory();
@@ -683,11 +718,13 @@ body {
       });
       typing.classList.remove('typing');
       typing.querySelector('.bubble').textContent = acc || '（空回复）';
+      dbg('回复长度=' + acc.length);
       history.push({ role: 'assistant', content: acc });
       saveHistory();
       el.status.textContent = '正在扮演 ' + (cfg.name || 'Ta');
       el.status.className = 'status ok';
     } catch (e) {
+      dbg('出错：' + (e.message || e));
       typing.remove();
       const raw = e.message || String(e);
       let tip = raw;
@@ -795,14 +832,22 @@ body {
   let lastSend = 0;
   function triggerSend() {
     const now = Date.now();
-    if (now - lastSend < 300) return;
+    if (now - lastSend < 300) { dbg('300ms内重复触发，忽略'); return; }
     lastSend = now;
+    dbg('触发发送');
     send();
   }
   window.__tapSend = triggerSend;
   el.send.addEventListener('click', (e) => { e.preventDefault(); triggerSend(); });
-  el.send.addEventListener('pointerup', (e) => { e.preventDefault(); triggerSend(); });
+  el.send.addEventListener('touchend', (e) => { triggerSend(); });
+  el.send.addEventListener('pointerup', (e) => { triggerSend(); });
   el.composer.addEventListener('submit', (e) => { e.preventDefault(); triggerSend(); });
+  document.addEventListener('click', function (e) {
+    if (e.target && e.target.closest && e.target.closest('#send')) triggerSend();
+  }, true);
+  document.addEventListener('touchend', function (e) {
+    if (e.target && e.target.closest && e.target.closest('#send')) triggerSend();
+  }, true);
   el.input.addEventListener('input', autosize);
   el.input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
@@ -843,6 +888,7 @@ body {
 
   refresh();
   renderHistory();
+  dbg('已加载 单文件v1 · ' + (configured() ? ('已连接 ' + (cfg.name || '')) : '未连接'));
 
   // 彻底清理旧版 service worker 与其缓存，以后每次加载都是最新文件
   if ('serviceWorker' in navigator) {
