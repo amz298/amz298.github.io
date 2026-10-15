@@ -288,10 +288,15 @@
   }
 
   async function send() {
+    if (!configured()) syncFromFields();
     const text = el.input.value.trim();
     if ((!text && pendingImages.length === 0) || busy) return;
     if (!configured()) {
-      appendHint('⚠ 先点右上角 ···，填好「API Key」和「模型 / 接入点 ID」（识图要用视觉模型）。');
+      openSettings();
+      el.connResult.hidden = false;
+      el.connResult.className = 'conn-result err';
+      el.connResult.textContent = '还没配好：填「API Key」和「模型/接入点 ID」，再点「测试连接」或「保存」。';
+      appendHint('⚠ 还没配好 API Key / 模型，去 ··· 设置里填一下。');
       return;
     }
 
@@ -368,9 +373,7 @@
     renderAvatarPreview();
     el.mask.classList.remove('hidden');
   }
-  function closeSettings() { el.mask.classList.add('hidden'); }
-
-  function saveSettings() {
+  function syncFromFields() {
     cfg.base = el.cfgBase.value.trim() || DEFAULTS.base;
     cfg.apiKey = el.cfgKey.value.trim();
     cfg.model = el.cfgModel.value.trim();
@@ -379,6 +382,11 @@
     cfg.memory = el.cfgMemory.value;
     cfg.examples = el.cfgExamples.value;
     saveJSON(CFG_KEY, cfg);
+  }
+  function closeSettings() { syncFromFields(); el.mask.classList.add('hidden'); }
+
+  function saveSettings() {
+    syncFromFields();
     closeSettings();
     refresh();
     renderHistory();
@@ -396,9 +404,10 @@
   }
 
   async function testConn() {
-    const key = el.cfgKey.value.trim();
-    const model = el.cfgModel.value.trim();
-    const base = (el.cfgBase.value.trim() || DEFAULTS.base).replace(/\/+$/, '');
+    syncFromFields();
+    const key = cfg.apiKey;
+    const model = cfg.model;
+    const base = cfg.base.replace(/\/+$/, '');
     const out = el.connResult;
     if (!key || !model) {
       out.hidden = false;
@@ -417,7 +426,7 @@
       });
       if (res.ok) {
         out.className = 'conn-result ok';
-        out.textContent = '✅ 连接成功，API Key 和模型都对，可以聊天了。';
+        out.textContent = '✅ 连接成功，配置已自动保存，直接去聊天吧。';
       } else {
         let d = ''; try { d = await res.text(); } catch {}
         out.className = 'conn-result err';
