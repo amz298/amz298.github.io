@@ -262,40 +262,22 @@
     return messages;
   }
 
-  // ---------- 调用方舟（流式） ----------
+  // ---------- 调用方舟（非流式，兼容性最好） ----------
   async function callArk(messages, onDelta) {
     const url = (cfg.base.replace(/\/+$/, '')) + '/chat/completions';
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
-      body: JSON.stringify({ model: cfg.model, messages, temperature: 0.8, max_tokens: 2048, stream: true }),
+      body: JSON.stringify({ model: cfg.model, messages, temperature: 0.8, max_tokens: 2048, stream: false }),
     });
     if (!res.ok) {
       let detail = '';
       try { detail = await res.text(); } catch {}
       throw new Error(`HTTP ${res.status}${detail ? '：' + detail.slice(0, 300) : ''}`);
     }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      const lines = buf.split('\n');
-      buf = lines.pop();
-      for (const line of lines) {
-        const t = line.trim();
-        if (!t.startsWith('data:')) continue;
-        const data = t.slice(5).trim();
-        if (data === '[DONE]') return;
-        try {
-          const j = JSON.parse(data);
-          const delta = j.choices && j.choices[0] && j.choices[0].delta;
-          if (delta && delta.content) onDelta(delta.content);
-        } catch {}
-      }
-    }
+    const j = await res.json();
+    const content = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    if (content) onDelta(content);
   }
 
   async function send() {
