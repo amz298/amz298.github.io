@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#0f1115" />
+  <title>AI 陪伴</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <span class="nav back">‹</span>
+    <div class="meta">
+      <div class="name" id="personaName">还没设人物</div>
+      <div class="status" id="status">未连接</div>
+    </div>
+    <button class="nav dots" id="openSettings" title="设置">···</button>
+  </header>
+
+  <main id="chat" class="chat" aria-live="polite"></main>
+
+  <form id="composer" class="composer">
+    <div id="previews" class="previews"></div>
+    <div class="composer-row">
+      <div class="input-wrap">
+        <textarea id="input" rows="1" placeholder="输入…" enterkeyhint="send"></textarea>
+      </div>
+      <button type="button" id="imgBtn" class="tool" title="发图片/拍一张">＋</button>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden />
+      <button id="send" type="submit" class="send-btn">发送</button>
+    </div>
+  </form>
+
+  <!-- 设置弹层 -->
+  <div id="settingsMask" class="mask hidden">
+    <div class="sheet">
+      <div class="sheet-head">
+        <h2>设置</h2>
+        <button class="ghost" id="closeSettings">✕</button>
+      </div>
+      <div class="sheet-body">
+        <label>接入点地址（默认方舟，别改）</label>
+        <input id="cfgBase" type="text" placeholder="https://ark.cn-beijing.volces.com/api/v3" />
+
+        <label>API Key <span class="hint">（只存在本机浏览器）</span></label>
+        <input id="cfgKey" type="password" placeholder="粘贴方舟 API Key" autocomplete="off" />
+
+        <label>模型 / 接入点 ID <span class="hint">（识图需选「视觉/vision」模型，如豆包视觉）</span></label>
+        <input id="cfgModel" type="text" placeholder="例如 ep-xxxxxxxx 或 doubao 视觉模型" />
+
+        <hr />
+
+        <label>人物名字</label>
+        <input id="cfgName" type="text" placeholder="例如：阿哲" />
+
+        <label>头像 <span class="hint">（显示在 TA 的消息左边）</span></label>
+        <div class="avatar-row">
+          <div class="avatar-preview" id="avatarPreview">Ta</div>
+          <button type="button" id="avatarBtn">选择图片</button>
+          <button type="button" id="avatarClear">恢复默认</button>
+          <input type="file" id="avatarInput" accept="image/*" hidden />
+        </div>
+
+        <label>人格设定 <span class="hint">（决定它是谁、怎么说话）</span></label>
+        <textarea id="cfgPersona" rows="8" placeholder="粘贴人格卡：它是谁、你们的关系、说话风格、口头禅、底线……"></textarea>
+
+        <label>关于你（长期记忆，它越聊越懂你）</label>
+        <textarea id="cfgMemory" rows="4" placeholder="例如：我是亚马逊操盘手，做欧洲站；喜欢……；最近在忙……"></textarea>
+
+        <label>对话样例（可选，教它怎么回，每行一条，格式「我:…」/「Ta:…」）</label>
+        <textarea id="cfgExamples" rows="6" placeholder="我: 今天好累&#10;Ta: 累就早点睡，别硬撑啦"></textarea>
+
+        <div class="row">
+          <button class="primary" id="saveSettings">保存</button>
+          <button class="danger" id="clearChat">清空对话</button>
+        </div>
+        <p class="footnote">所有设置与聊天记录都只存在这台设备的浏览器 localStorage 中，不上传任何第三方。</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
