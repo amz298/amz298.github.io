@@ -262,22 +262,29 @@
     return messages;
   }
 
-  // ---------- 调用方舟（非流式，兼容性最好） ----------
+  // ---------- 调用方舟（非流式 + 60s 超时，绝不死等） ----------
   async function callArk(messages, onDelta) {
     const url = (cfg.base.replace(/\/+$/, '')) + '/chat/completions';
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
-      body: JSON.stringify({ model: cfg.model, messages, temperature: 0.8, max_tokens: 2048, stream: false }),
-    });
-    if (!res.ok) {
-      let detail = '';
-      try { detail = await res.text(); } catch {}
-      throw new Error(`HTTP ${res.status}${detail ? '：' + detail.slice(0, 300) : ''}`);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 60000);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
+        body: JSON.stringify({ model: cfg.model, messages, temperature: 0.8, max_tokens: 2048, stream: false }),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) {
+        let detail = '';
+        try { detail = await res.text(); } catch {}
+        throw new Error(`HTTP ${res.status}${detail ? '：' + detail.slice(0, 300) : ''}`);
+      }
+      const j = await res.json();
+      const content = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+      if (content) onDelta(content);
+    } finally {
+      clearTimeout(timer);
     }
-    const j = await res.json();
-    const content = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-    if (content) onDelta(content);
   }
 
   async function send() {
@@ -425,6 +432,7 @@
   }
 
   // ---------- 事件 ----------
+  el.send.addEventListener('click', (e) => { e.preventDefault(); send(); });
   el.composer.addEventListener('submit', (e) => { e.preventDefault(); send(); });
   el.input.addEventListener('input', autosize);
   el.input.addEventListener('keydown', (e) => {
