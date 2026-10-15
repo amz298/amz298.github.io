@@ -29,7 +29,7 @@
       </div>
       <button type="button" id="imgBtn" class="tool" title="发图片/拍一张">＋</button>
       <input type="file" id="fileInput" accept="image/*" multiple hidden />
-      <button id="send" type="button" class="send-btn">发送</button>
+      <button id="send" type="submit" class="send-btn" onclick="if(window.__tapSend)window.__tapSend()">发送</button>
     </div>
   </form>
 
@@ -78,7 +78,7 @@
           <button class="primary" id="saveSettings">保存</button>
           <button class="danger" id="clearChat">清空对话</button>
         </div>
-        <p class="footnote">所有设置与聊天记录都只存在这台设备的浏览器 localStorage 中，不上传任何第三方。</p>
+        <p class="footnote">所有设置与聊天记录都只存在这台设备的浏览器 localStorage 中，不上传任何第三方。（当前版本 v8）</p>
       </div>
     </div>
   </div>

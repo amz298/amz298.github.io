@@ -244,3 +244,18 @@ body {
 .conn-result.ok { color: var(--green); }
 .conn-result.err { color: var(--danger); }
 .footnote { font-size: 11px; color: var(--muted); line-height: 1.5; margin: 0; }
+
+/* 调试悬浮条（排查用） */
+.dbg {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 58px);
+  padding: 4px 12px;
+  font-size: 12px; line-height: 1.5;
+  color: #c0392b;
+  background: rgba(255, 247, 230, .96);
+  border-top: 1px solid #f0d9a8; border-bottom: 1px solid #f0d9a8;
+  pointer-events: none;
+  white-space: pre-wrap; word-break: break-all;
+  z-index: 19;
+}

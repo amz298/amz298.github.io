@@ -219,6 +219,18 @@
     toastTimer = setTimeout(() => { t.style.display = 'none'; }, 1800);
   }
 
+  function dbg(msg) {
+    try { console.log('[dbg]', msg); } catch {}
+    let d = document.getElementById('dbg');
+    if (!d) {
+      d = document.createElement('div');
+      d.id = 'dbg';
+      d.className = 'dbg';
+      document.body.appendChild(d);
+    }
+    d.textContent = '调试 · ' + msg;
+  }
+
   // ---------- 对话样例解析 ----------
   function parseExamples(raw) {
     const out = [];
@@ -302,14 +314,17 @@
   }
 
   async function send() {
+    dbg('进入 send | 输入=' + el.input.value.length + '字 | busy=' + busy + ' | 已配置=' + configured());
     if (!configured()) syncFromFields();
-    if (busy) return;
+    if (busy) { dbg('busy=true，中止'); return; }
     const text = el.input.value.trim();
     if (!text && pendingImages.length === 0) {
+      dbg('输入为空，提示并中止');
       flashToast('输入框是空的（' + el.input.value.length + ' 个字符），先打字再发送');
       return;
     }
     if (!configured()) {
+      dbg('未配置，打开设置');
       openSettings();
       el.connResult.hidden = false;
       el.connResult.className = 'conn-result err';
@@ -326,6 +341,7 @@
     if (images.length) msg.images = images;
     history.push(msg);
     addBubble('me', text, images);
+    dbg('已上屏我方气泡，准备请求方舟');
     el.input.value = '';
     autosize();
     saveHistory();
@@ -348,6 +364,7 @@
         typing.querySelector('.bubble').textContent = acc || '···';
         el.chat.scrollTop = el.chat.scrollHeight;
       });
+      dbg('回复收到，长度=' + acc.length);
       typing.classList.remove('typing');
       typing.querySelector('.bubble').textContent = acc || '（空回复）';
       history.push({ role: 'assistant', content: acc });
@@ -355,6 +372,7 @@
       el.status.textContent = `正在扮演 ${cfg.name || 'Ta'}`;
       el.status.className = 'status ok';
     } catch (e) {
+      dbg('发送出错：' + (e.message || e));
       typing.remove();
       const raw = e.message || String(e);
       let tip = raw;
@@ -462,10 +480,12 @@
   let lastSend = 0;
   function triggerSend() {
     const now = Date.now();
-    if (now - lastSend < 300) return;
+    if (now - lastSend < 300) { dbg('300ms 内重复触发，忽略'); return; }
     lastSend = now;
+    dbg('触发发送');
     send();
   }
+  window.__tapSend = triggerSend;
   el.send.addEventListener('click', (e) => { e.preventDefault(); triggerSend(); });
   el.send.addEventListener('pointerup', (e) => { e.preventDefault(); triggerSend(); });
   el.composer.addEventListener('submit', (e) => { e.preventDefault(); triggerSend(); });
@@ -494,6 +514,7 @@
   // ---------- 启动 ----------
   refresh();
   renderHistory();
+  dbg('v8 · ' + (configured() ? ('已连接 ' + (cfg.name || '')) : '未连接（未配置）') + ' · 输入字数=' + el.input.value.length);
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
