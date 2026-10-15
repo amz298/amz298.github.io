@@ -30,6 +30,7 @@
     saveSettings: $('saveSettings'), clearChat: $('clearChat'),
     avatarPreview: $('avatarPreview'), avatarBtn: $('avatarBtn'),
     avatarClear: $('avatarClear'), avatarInput: $('avatarInput'),
+    testConn: $('testConn'), connResult: $('connResult'),
   };
 
   let cfg = loadJSON(CFG_KEY, DEFAULTS);
@@ -301,7 +302,7 @@
     const text = el.input.value.trim();
     if ((!text && pendingImages.length === 0) || busy) return;
     if (!configured()) {
-      appendHint('⚠ 先点右上角 ⚙，填好「API Key」和「模型 / 接入点 ID」（识图要用视觉模型）。');
+      appendHint('⚠ 先点右上角 ···，填好「API Key」和「模型 / 接入点 ID」（识图要用视觉模型）。');
       return;
     }
 
@@ -343,7 +344,14 @@
       el.status.className = 'status ok';
     } catch (e) {
       typing.remove();
-      el.status.textContent = '出错了：' + e.message;
+      const raw = e.message || String(e);
+      let tip = raw;
+      if (/Failed to fetch|NetworkError|Load failed|fetch failed/i.test(raw)) tip = '网络/跨域问题，连不上方舟（' + raw + '）';
+      else if (raw.indexOf('401') >= 0) tip = 'API Key 不对或过期（HTTP 401），去设置换成「推理 API Key」';
+      else if (raw.indexOf('404') >= 0) tip = '模型/接入点 ID 找不到（HTTP 404），确认是 ep- 开头';
+      else if (raw.indexOf('429') >= 0) tip = '请求太频繁或额度用完了（HTTP 429）';
+      appendHint('⚠ 发送失败：' + tip);
+      el.status.textContent = '发送失败';
       el.status.className = 'status err';
       history.pop();            // 回滚刚才那条用户消息
       saveHistory();
@@ -398,6 +406,42 @@
     appendHint('对话已清空。');
   }
 
+  async function testConn() {
+    const key = el.cfgKey.value.trim();
+    const model = el.cfgModel.value.trim();
+    const base = (el.cfgBase.value.trim() || DEFAULTS.base).replace(/\/+$/, '');
+    const out = el.connResult;
+    if (!key || !model) {
+      out.hidden = false;
+      out.className = 'conn-result err';
+      out.textContent = '先填好「API Key」和「模型 / 接入点 ID」。';
+      return;
+    }
+    out.hidden = false;
+    out.className = 'conn-result';
+    out.textContent = '正在测试…';
+    try {
+      const res = await fetch(base + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({ model, messages: [{ role: 'user', content: '你好' }], max_tokens: 4, stream: false }),
+      });
+      if (res.ok) {
+        out.className = 'conn-result ok';
+        out.textContent = '✅ 连接成功，API Key 和模型都对，可以聊天了。';
+      } else {
+        let d = ''; try { d = await res.text(); } catch {}
+        out.className = 'conn-result err';
+        out.textContent = '❌ HTTP ' + res.status + '：' + d.slice(0, 260);
+        if (res.status === 401) out.textContent += ' ← API Key 不对/过期（别把 AK/SK 里的 Secret Key 当 API Key）';
+        else if (res.status === 404) out.textContent += ' ← 模型/接入点 ID 找不到，确认是 ep- 开头';
+      }
+    } catch (e) {
+      out.className = 'conn-result err';
+      out.textContent = '❌ 无法连接方舟：' + (e.message || e) + '（通常是浏览器跨域拦截，或手机网络不通）。';
+    }
+  }
+
   // ---------- 事件 ----------
   el.composer.addEventListener('submit', (e) => { e.preventDefault(); send(); });
   el.input.addEventListener('input', autosize);
@@ -420,6 +464,7 @@
   el.mask.addEventListener('click', (e) => { if (e.target === el.mask) closeSettings(); });
   el.saveSettings.addEventListener('click', saveSettings);
   el.clearChat.addEventListener('click', clearChat);
+  el.testConn.addEventListener('click', testConn);
 
   // ---------- 启动 ----------
   refresh();
