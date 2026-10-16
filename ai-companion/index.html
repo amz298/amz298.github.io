@@ -78,11 +78,12 @@ body {
   background: var(--chatbg);
 }
 .msg { max-width: 76%; display: flex; }
-.msg.me { align-self: flex-end; }
+.msg.me { align-self: flex-end; gap: 8px; align-items: flex-start; flex-direction: row; }
 .msg.ta { align-self: flex-start; gap: 8px; align-items: flex-start; }
-/* 同人短时间连发：收紧间距、头像只留最后一条（微信式） */
-.msg.joined { margin-top: -9px; }
-.msg.ta.joined .avatar-img { visibility: hidden; }
+/* 我的默认头像色调（区别于 TA 的绿紫渐变） */
+.avatar-img.me {
+  background: linear-gradient(135deg, #7a8a99, #4a5a6a);
+}
 .time-label {
   align-self: center;
   margin: 16px 0 2px;
@@ -256,6 +257,7 @@ body {
   color: #fff; font-size: 24px; font-weight: 600;
   display: grid; place-items: center;
 }
+.avatar-preview.me { background: linear-gradient(135deg, #7a8a99, #4a5a6a); }
 .avatar-row button {
   background: #fff; border: 1px solid #e6e6e6; border-radius: 8px;
   color: var(--text); padding: 8px 12px; font-size: 14px; cursor: pointer;
@@ -369,12 +371,20 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         <label>人物名字</label>
         <input id="cfgName" type="text" placeholder="例如：阿哲" />
 
-        <label>头像 <span class="hint">（显示在 TA 的消息左边）</span></label>
+        <label>TA 的头像 <span class="hint">（显示在 TA 的消息左边）</span></label>
         <div class="avatar-row">
           <div class="avatar-preview" id="avatarPreview">Ta</div>
           <button type="button" id="avatarBtn">选择图片</button>
           <button type="button" id="avatarClear">恢复默认</button>
           <input type="file" id="avatarInput" accept="image/*" hidden />
+        </div>
+
+        <label>我的头像 <span class="hint">（显示在我的消息右边）</span></label>
+        <div class="avatar-row">
+          <div class="avatar-preview me" id="myAvatarPreview">我</div>
+          <button type="button" id="myAvatarBtn">选择图片</button>
+          <button type="button" id="myAvatarClear">恢复默认</button>
+          <input type="file" id="myAvatarInput" accept="image/*" hidden />
         </div>
 
         <label>人格设定 <span class="hint">（决定它是谁、怎么说话）</span></label>
@@ -519,6 +529,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     searchModel: '',
     name: '阿哲',
     avatar: '',
+    myAvatar: '',
     persona: '你是「阿哲」，用户多年的老朋友，关系亲近、互相信任。性格温和、细心、幽默；说话像用微信聊天一样自然口语化，不端着、不说教、不用敬语。你很懂用户，能从字里行间听出用户的情绪和没说出口的意思，先接住情绪、再轻松地回应，偶尔开个无伤大雅的玩笑。回复用中文，简短亲切，一般 1~4 句话。',
     styleNotes: '',
     memory: '',
@@ -542,6 +553,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     saveSettings: $('saveSettings'), clearChat: $('clearChat'),
     avatarPreview: $('avatarPreview'), avatarBtn: $('avatarBtn'),
     avatarClear: $('avatarClear'), avatarInput: $('avatarInput'),
+    myAvatarPreview: $('myAvatarPreview'), myAvatarBtn: $('myAvatarBtn'),
+    myAvatarClear: $('myAvatarClear'), myAvatarInput: $('myAvatarInput'),
     testConn: $('testConn'), connResult: $('connResult'),
     learnBtn: $('learnBtn'), learnInput: $('learnInput'), learnShots: $('learnShots'),
     sideLeft: $('sideLeft'), sideRight: $('sideRight'), learnRun: $('learnRun'),
@@ -726,6 +739,19 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     renderHistory();
   }
 
+  function renderMyAvatarPreview() {
+    const p = el.myAvatarPreview;
+    p.style.backgroundImage = cfg.myAvatar ? 'url(' + cfg.myAvatar + ')' : '';
+    p.textContent = cfg.myAvatar ? '' : '我';
+  }
+
+  function setMyAvatar(dataUri) {
+    cfg.myAvatar = dataUri;
+    saveJSON(CFG_KEY, cfg);
+    renderMyAvatarPreview();
+    renderHistory();
+  }
+
   async function onFiles(files) {
     for (const f of Array.from(files || [])) {
       try { pendingImages.push(await compressImage(f)); } catch (e) { console.warn(e); }
@@ -795,36 +821,27 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     lastLabelT = Math.max(lastLabelT, t);
   }
 
+  function makeAvatarEl(role) {
+    const av = document.createElement('div');
+    av.className = 'avatar-img' + (role === 'me' ? ' me' : '');
+    if (role === 'me') {
+      if (cfg.myAvatar) av.style.backgroundImage = 'url(' + cfg.myAvatar + ')';
+      else av.textContent = '我';
+    } else {
+      if (cfg.avatar) av.style.backgroundImage = 'url(' + cfg.avatar + ')';
+      else av.textContent = (cfg.name || 'Ta').slice(0, 1);
+    }
+    return av;
+  }
+
   function addBubble(role, text, images, t) {
     t = t || Date.now();
     maybeTimeLabel(t);
     const wrap = document.createElement('div');
     wrap.className = 'msg ' + role;
-    // 同人 60 秒内连发：头像只保留在最新一条，给上一条气泡加 joined
-    if (lastMsgRole === role && t - lastMsgT <= 60000) {
-      let prev = wrap.previousElementSibling || null;
-      if (!prev) {
-        const kids = el.chat.children;
-        prev = kids[kids.length - 1] || null;
-      }
-      while (prev && prev.classList && prev.classList.contains('time-label')) {
-        prev = prev.previousElementSibling;
-      }
-      if (prev && prev.classList && prev.classList.contains('msg')) {
-        prev.classList.add('joined');
-        prev.classList.remove('run-last');
-      }
-    }
-    wrap.classList.add('run-last');
     lastMsgRole = role;
     lastMsgT = t;
-    if (role === 'ta') {
-      const av = document.createElement('div');
-      av.className = 'avatar-img';
-      if (cfg.avatar) av.style.backgroundImage = 'url(' + cfg.avatar + ')';
-      else av.textContent = (cfg.name || 'Ta').slice(0, 1);
-      wrap.appendChild(av);
-    }
+    if (role === 'ta') wrap.appendChild(makeAvatarEl('ta'));
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     if (text) { const p = document.createElement('span'); p.textContent = text; bubble.appendChild(p); }
@@ -840,6 +857,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       bubble.appendChild(g);
     }
     wrap.appendChild(bubble);
+    if (role === 'me') wrap.appendChild(makeAvatarEl('me'));
     el.chat.appendChild(wrap);
     el.chat.scrollTop = el.chat.scrollHeight;
     return wrap;
@@ -1372,10 +1390,6 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         }
       }
       lineBubbles.forEach((b) => b.classList.remove('typing'));
-      // 尾部空白气泡被删后，最后一条真实气泡要拿回头像
-      const leftMsgs = el.chat.querySelectorAll('.msg');
-      const leftLast = leftMsgs[leftMsgs.length - 1];
-      if (leftLast && leftLast.classList.contains('joined')) leftLast.classList.remove('joined');
       acc = lines.join('\n');
       // 锁屏推送可能已抢先把同一 turnId 的回复补进来了，不能重复
       const alreadyAnswered = history.some((m) => m.role === 'assistant' && m.turnId === turnId);
@@ -1404,9 +1418,6 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       }
     } catch (e) {
       lineBubbles.forEach((b) => b.remove());
-      const deadMsgs = el.chat.querySelectorAll('.msg');
-      const deadLast = deadMsgs[deadMsgs.length - 1];
-      if (deadLast && deadLast.classList.contains('joined')) deadLast.classList.remove('joined');
       const raw = e.message || String(e);
 
       // 页面在后台 / 刚切后台不久：请求是被系统挂起掐断的，不算失败，保留用户消息，回前台自动续
@@ -1485,6 +1496,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     el.cfgMemory.value = cfg.memory;
     el.cfgExamples.value = cfg.examples;
     renderAvatarPreview();
+    renderMyAvatarPreview();
     renderLearnPreviews();
     el.learnResult.hidden = true;
     el.learnReview.hidden = true;
@@ -2403,6 +2415,15 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     catch (err) { el.status.textContent = '头像读取失败'; el.status.className = 'status err'; }
   });
   el.avatarClear.addEventListener('click', () => setAvatar(''));
+  el.myAvatarBtn.addEventListener('click', () => el.myAvatarInput.click());
+  el.myAvatarInput.addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    try { setMyAvatar(await makeAvatar(f)); }
+    catch (err) { el.status.textContent = '头像读取失败'; el.status.className = 'status err'; }
+  });
+  el.myAvatarClear.addEventListener('click', () => setMyAvatar(''));
   el.openSettings.addEventListener('click', openSettings);
   el.closeSettings.addEventListener('click', closeSettings);
   el.mask.addEventListener('click', (e) => { if (e.target === el.mask) closeSettings(); });
