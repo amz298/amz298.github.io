@@ -80,6 +80,16 @@ body {
 .msg { max-width: 76%; display: flex; }
 .msg.me { align-self: flex-end; }
 .msg.ta { align-self: flex-start; gap: 8px; align-items: flex-start; }
+/* 同人短时间连发：收紧间距、头像只留最后一条（微信式） */
+.msg.joined { margin-top: -9px; }
+.msg.ta.joined .avatar-img { visibility: hidden; }
+.time-label {
+  align-self: center;
+  margin: 16px 0 2px;
+  color: #b2b2b2;
+  font-size: 12px;
+  line-height: 1.4;
+}
 .avatar-img {
   flex: none; width: 36px; height: 36px;
   border-radius: 6px;
@@ -548,7 +558,20 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   };
 
   let cfg = loadJSON(CFG_KEY, DEFAULTS);
-  let history = loadJSON(HIST_KEY, []);   // [{role, content, images?:[dataUri]}]
+  let history = loadJSON(HIST_KEY, []);   // [{role, content, images?:[dataUri], t}]
+
+  // 老记录没有时间戳：按每分钟一条向现在倒推补齐（仅用于时间展示），补完持久化一次
+  function ensureHistoryTimes() {
+    let changed = false;
+    const n = history.length;
+    history.forEach((m, i) => {
+      if (!m.t || typeof m.t !== 'number') {
+        m.t = Date.now() - (n - 1 - i) * 60000;
+        changed = true;
+      }
+    });
+    if (changed) saveHistory();
+  }
   let pendingImages = [];                 // 待发送的图片 dataUri
   let busy = false;
   let netOn = true;                        // 联网开关（配置了联网接入点时生效）
@@ -730,9 +753,71 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   }
 
   // ---------- 渲染 ----------
-  function addBubble(role, text, images) {
+  // ---------- 微信式时间标签 ----------
+  let lastLabelT = 0;            // 上一条时间标签对应的时刻
+  let lastMsgRole = '';          // 上一条气泡是谁发的
+  let lastMsgT = 0;              // 上一条气泡的时刻
+  const TIME_GAP_MS = 5 * 60 * 1000;   // 间隔 5 分钟显示时间
+
+  function isSameDay(a, b) {
+    const d = new Date(a), e = new Date(b);
+    return d.getFullYear() === e.getFullYear() && d.getMonth() === e.getMonth() && d.getDate() === e.getDate();
+  }
+  function dayDiffToNow(t) {
+    const x = new Date(t); x.setHours(0, 0, 0, 0);
+    const y = new Date(); y.setHours(0, 0, 0, 0);
+    return Math.round((y - x) / 86400000);
+  }
+  function clockCN(d) {
+    const h = d.getHours();
+    const seg = h < 5 ? '凌晨' : h < 9 ? '早上' : h < 11 ? '上午' : h < 13 ? '中午' : h < 18 ? '下午' : '晚上';
+    return seg + (h % 12 || 12) + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function timeLabelText(t) {
+    const d = new Date(t), now = new Date(), c = clockCN(d);
+    if (isSameDay(t, now.getTime())) return c;
+    const dd = dayDiffToNow(t);
+    if (dd === 1) return '昨天 ' + c;
+    if (dd > 1 && dd <= 6 && d.getFullYear() === now.getFullYear()) return '周' + '日一二三四五六'[d.getDay()] + ' ' + c;
+    if (d.getFullYear() === now.getFullYear()) return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + c;
+    return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + c;
+  }
+  function addTimeLabel(text) {
+    const div = document.createElement('div');
+    div.className = 'time-label';
+    div.textContent = text;
+    el.chat.appendChild(div);
+  }
+  function maybeTimeLabel(t) {
+    if (!lastLabelT || !isSameDay(lastMsgT, t) || t - lastLabelT >= TIME_GAP_MS) {
+      addTimeLabel(timeLabelText(t));
+    }
+    lastLabelT = Math.max(lastLabelT, t);
+  }
+
+  function addBubble(role, text, images, t) {
+    t = t || Date.now();
+    maybeTimeLabel(t);
     const wrap = document.createElement('div');
     wrap.className = 'msg ' + role;
+    // 同人 60 秒内连发：头像只保留在最新一条，给上一条气泡加 joined
+    if (lastMsgRole === role && t - lastMsgT <= 60000) {
+      let prev = wrap.previousElementSibling || null;
+      if (!prev) {
+        const kids = el.chat.children;
+        prev = kids[kids.length - 1] || null;
+      }
+      while (prev && prev.classList && prev.classList.contains('time-label')) {
+        prev = prev.previousElementSibling;
+      }
+      if (prev && prev.classList && prev.classList.contains('msg')) {
+        prev.classList.add('joined');
+        prev.classList.remove('run-last');
+      }
+    }
+    wrap.classList.add('run-last');
+    lastMsgRole = role;
+    lastMsgT = t;
     if (role === 'ta') {
       const av = document.createElement('div');
       av.className = 'avatar-img';
@@ -761,23 +846,24 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   }
 
   // TA 的一条历史记录：按换行拆成多个独立气泡（还原真人连发微信）
-  function addAssistantLines(text) {
+  function addAssistantLines(text, t) {
     const lines = String(text || '').split('\n');
     let any = false;
     for (const ln of lines) {
-      if (ln.trim()) { addBubble('ta', ln); any = true; }
+      if (ln.trim()) { addBubble('ta', ln, null, t); any = true; }
     }
-    if (!any) addBubble('ta', text || '');
+    if (!any) addBubble('ta', text || '', null, t);
   }
 
   function renderHistory() {
     el.chat.innerHTML = '';
+    lastLabelT = 0; lastMsgRole = ''; lastMsgT = 0;
     if (history.length === 0) {
       appendHint('还没有对话。设置好人物和 API 后，跟它聊第一句吧。');
     } else {
       for (const m of history) {
-        if (m.role === 'user') addBubble('me', m.content, m.images);
-        else addAssistantLines(m.content);
+        if (m.role === 'user') addBubble('me', m.content, m.images, m.t);
+        else addAssistantLines(m.content, m.t);
       }
     }
   }
@@ -1144,10 +1230,11 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     renderPreviews();
 
     const turnId = uid();
-    const msg = { role: 'user', content: text, turnId: turnId };
+    const now = Date.now();
+    const msg = { role: 'user', content: text, turnId: turnId, t: now };
     if (images.length) msg.images = images;
     history.push(msg);
-    addBubble('me', text, images);
+    addBubble('me', text, images, now);
     el.input.value = '';
     autosize();
     saveHistory();
@@ -1285,6 +1372,10 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         }
       }
       lineBubbles.forEach((b) => b.classList.remove('typing'));
+      // 尾部空白气泡被删后，最后一条真实气泡要拿回头像
+      const leftMsgs = el.chat.querySelectorAll('.msg');
+      const leftLast = leftMsgs[leftMsgs.length - 1];
+      if (leftLast && leftLast.classList.contains('joined')) leftLast.classList.remove('joined');
       acc = lines.join('\n');
       // 锁屏推送可能已抢先把同一 turnId 的回复补进来了，不能重复
       const alreadyAnswered = history.some((m) => m.role === 'assistant' && m.turnId === turnId);
@@ -1293,7 +1384,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         return;
       }
       if (acc) {
-        history.push({ role: 'assistant', content: acc, turnId: turnId });
+        history.push({ role: 'assistant', content: acc, turnId: turnId, t: Date.now() });
         saveHistory();
       } else {
         lineBubbles.forEach((b) => b.remove());
@@ -1313,6 +1404,9 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       }
     } catch (e) {
       lineBubbles.forEach((b) => b.remove());
+      const deadMsgs = el.chat.querySelectorAll('.msg');
+      const deadLast = deadMsgs[deadMsgs.length - 1];
+      if (deadLast && deadLast.classList.contains('joined')) deadLast.classList.remove('joined');
       const raw = e.message || String(e);
 
       // 页面在后台 / 刚切后台不久：请求是被系统挂起掐断的，不算失败，保留用户消息，回前台自动续
@@ -1895,8 +1989,9 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       try { new Notification(cfg.name || 'Ta', { body: lines[0], icon: 'icon.png' }); } catch (e) {}
     }
     for (const line of lines) {
-      history.push({ role: 'assistant', content: line });
-      addBubble('ta', line);
+      const t = Date.now();
+      history.push({ role: 'assistant', content: line, t: t });
+      addBubble('ta', line, null, t);
       await sleep(rand(450, 1100));
     }
     saveHistory();
@@ -2092,7 +2187,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     if (!p || !p.id || !p.text) return false;
     if (history.some((m) => m.paId === p.id)) return false;
     const full = p.fullText || p.text;
-    history.push({ role: 'assistant', content: full, paId: p.id });
+    const paT = p.t || Date.now();
+    history.push({ role: 'assistant', content: full, paId: p.id, t: paT });
     saveHistory();
     pendingAck.push(p.id);
     scheduleAck();
@@ -2103,7 +2199,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     const lines = full.split('\n').map((s) => s.trim()).filter(Boolean);
     paRevealChain = paRevealChain.then(async () => {
       for (let i = 0; i < lines.length; i++) {
-        const b = addBubble('ta', '');
+        const b = addBubble('ta', '', null, paT);
         b.classList.add('typing');
         el.chat.scrollTop = el.chat.scrollHeight;
         await paWait(500 + Math.random() * 600);          // 先"输入"一会
@@ -2159,10 +2255,11 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       const match = last && last.role === 'user' && (!p.turnId || last.turnId === p.turnId);
       if (!match) continue;
 
-      history.push({ role: 'assistant', content: p.text, turnId: p.turnId || last.turnId });
+      const repT = Date.now();
+      history.push({ role: 'assistant', content: p.text, turnId: p.turnId || last.turnId, t: repT });
       saveHistory();
       for (const ln of p.text.split('\n')) {
-        if (ln.trim()) addBubble('ta', ln);
+        if (ln.trim()) addBubble('ta', ln, null, repT);
       }
       el.chat.scrollTop = el.chat.scrollHeight;
       resumePending = false;
@@ -2427,6 +2524,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     if (importedAny) history.replaceState(null, '', location.pathname);
   } catch (e) {}
 
+  ensureHistoryTimes();
   refresh();
   renderHistory();
   updateNetBtn();
