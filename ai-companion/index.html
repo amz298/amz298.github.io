@@ -290,6 +290,10 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
 .mem-add-row button { flex: none; }
 .learn-pairs { display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.5; }
 .learn-pairs .pair { background: #fff; border: 1px solid #eee; border-radius: 6px; padding: 6px 8px; }
+
+/* 设置里的复选项 */
+.check-row { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); }
+.check-row input { flex: none; width: 18px; height: 18px; }
   </style>
 </head>
 <body>
@@ -406,6 +410,17 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         <label>对话样例（手写 + 学习产出；每行一条，格式「我:…」/「Ta:…」）</label>
         <textarea id="cfgExamples" rows="7" placeholder="我: 今天好累&#10;Ta: 累就早点睡，别硬撑啦"></textarea>
 
+        <hr />
+        <label class="check-row">
+          <input type="checkbox" id="cfgProactive" />
+          <span>允许 TA 主动发消息</span>
+        </label>
+        <p class="hint" style="margin:0;">App 开着时她会随机主动说话；你离开一阵再打开，会看到她补发的消息。App 完全关掉时不会发（纯前端没有服务器；锁屏推送得以后加后端）。</p>
+        <div class="row">
+          <button type="button" class="test-btn" id="notifBtn">开启系统通知（可选）</button>
+        </div>
+        <p id="notifResult" class="conn-result" hidden></p>
+
         <div class="row">
           <button class="primary" id="saveSettings">保存</button>
           <button class="danger" id="clearChat">清空对话</button>
@@ -440,6 +455,12 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   const LEARN_PAIRS_MAX = 30;    // examples 学习区最多保留的组数
   const EX_LINES_MAX = 80;       // examples 原始文本总行数上限
   const EX_INJECT = 16;          // buildMessages 注入 few-shot 条数
+  // 主动消息参数
+  const PA_GAP_MIN = 20 * 60 * 1000;   // 前台时距上次说话，最快 20 分钟再主动
+  const PA_GAP_MAX = 75 * 60 * 1000;   // 最迟 75 分钟
+  const PA_AWAY_MIN = 35 * 60 * 1000;  // 离开这么久再回来，补发期间消息
+  const PA_CHECK_MS = 30000;           // 前台定时检查间隔
+  const PA_LINE_MAX = 80;              // 主动消息单条长度上限
 
   // 记忆类别（顺序即渲染/注入顺序）
   const CATS = [
@@ -465,6 +486,9 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     styleNotes: '',
     memory: '',
     examples: '',
+    proactive: true,              // 允许 TA 主动发消息
+    proactiveLast: 0,             // 上次双方说话的时间戳
+    proactiveNext: 0,             // 前台模式下，下次允许主动的时间戳
   };
 
   const $ = (id) => document.getElementById(id);
@@ -488,6 +512,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     memRun: $('memRun'), memResult: $('memResult'), memMeta: $('memMeta'),
     memCat: $('memCat'), memText: $('memText'), memAdd: $('memAdd'),
     memList: $('memList'), memClear: $('memClear'),
+    cfgProactive: $('cfgProactive'), notifBtn: $('notifBtn'), notifResult: $('notifResult'),
   };
 
   let cfg = loadJSON(CFG_KEY, DEFAULTS);
@@ -1073,6 +1098,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       saveHistory();
       el.status.textContent = '正在扮演 ' + (cfg.name || 'Ta');
       el.status.className = 'status ok';
+      markActive();             // 刚说过话，推后她下次主动的时间
       void maybeAutoMemory();   // 后台静默整理，不 await、不影响界面
     } catch (e) {
       typing.remove();
@@ -1117,6 +1143,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     renderMemList();
     updateMemMeta();
     el.memResult.hidden = true;
+    el.cfgProactive.checked = !!cfg.proactive;
+    el.notifResult.hidden = true;
     el.mask.classList.remove('hidden');
   }
   function syncFromFields() {
@@ -1129,6 +1157,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     cfg.styleNotes = el.cfgStyleNotes.value;
     cfg.memory = el.cfgMemory.value;
     cfg.examples = el.cfgExamples.value;
+    cfg.proactive = el.cfgProactive.checked;
     saveJSON(CFG_KEY, cfg);
   }
   function closeSettings() { syncFromFields(); el.mask.classList.add('hidden'); }
@@ -1529,6 +1558,112 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     }
   }
 
+  // ================= 主动消息（前台随机主动 + 回来补发） =================
+  let paBusy = false;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  function humanGap(ms) {
+    const m = Math.round(ms / 60000);
+    if (m < 60) return m + ' 分钟';
+    const h = Math.round(m / 60);
+    return h + ' 小时';
+  }
+
+  // 双方说过话后：刷新水位，下次主动时间随机推后
+  function markActive() {
+    const now = Date.now();
+    cfg.proactiveLast = now;
+    cfg.proactiveNext = now + rand(PA_GAP_MIN, PA_GAP_MAX);
+    saveJSON(CFG_KEY, cfg);
+  }
+
+  // 让模型以 TA 的身份主动发起；返回清洗后的短句数组，失败 []
+  async function genProactiveLines(maxLines) {
+    const now = new Date();
+    const weekday = ['日', '一', '二', '三', '四', '五', '六'][now.getDay()];
+    const p = (n) => String(n).padStart(2, '0');
+    const clock = p(now.getHours()) + ':' + p(now.getMinutes());
+    const gap = cfg.proactiveLast ? humanGap(now.getTime() - cfg.proactiveLast) : '';
+
+    const system =
+      '你是「' + cfg.name + '」。现在不是回复用户，而是你主动给他发微信。' +
+      '严格按你的人物设定和说话风格说话，只输出 JSON，不写别的。';
+    const text =
+      '现在是周' + weekday + ' ' + clock + (gap ? '，距你们上次说话约 ' + gap : '') + '。\n' +
+      '请以「' + cfg.name + '」的身份，主动发 ' + (maxLines === 1 ? '一条' : '一到' + maxLines + '条') + '微信，想到什么发什么。\n' +
+      '可选的动机（挑最自然的，也可以不在此列）：\n' +
+      '- 早上问醒了没、叮嘱吃早饭；饭点问吃了什么；晚上催睡觉、说晚安\n' +
+      '- 你正在做的事、刚看到的东西、路上遇到的事，分享给他\n' +
+      '- 突然想他、撒娇、无聊了找他、给他起个话题\n' +
+      '- 只发一个表情/颜文字配一两个字\n\n' +
+      '要求：\n' +
+      '1. 每条独立成句，像真人连发微信，可以只有几个字；忠于你的语气词、标点和 emoji 习惯。\n' +
+      '2. 不要查岗式连环质问，不要说"好久没联系""在不在"这种生硬开场，不要自我介绍，不要提 AI。\n' +
+      '3. 不要总结、不要小作文，内容要具体（有场景、有细节），别发空洞的"今天过得怎么样"。\n\n' +
+      '只输出一个 JSON：{"lines":["第一句","第二句"]}';
+
+    let out = '';
+    try {
+      await callArk(
+        [{ role: 'system', content: system }, { role: 'user', content: text }],
+        (s) => { out += s; },
+        { model: cfg.model, maxTokens: 600, temperature: 0.9, timeout: 60000 }
+      );
+      const obj = extractJSON(out);
+      if (!obj || !Array.isArray(obj.lines)) return [];
+      const lines = [];
+      for (const raw of obj.lines) {
+        const t = flatOne(raw);
+        if (!t) continue;
+        lines.push(t.slice(0, PA_LINE_MAX));
+        if (lines.length >= maxLines) break;
+      }
+      return lines;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // 她的消息直接冒出来（无 typing 气泡），逐条发，像真人连发
+  async function pushProactive(lines) {
+    if (!lines.length) return;
+    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+      try { new Notification(cfg.name || 'Ta', { body: lines[0], icon: 'icon.png' }); } catch (e) {}
+    }
+    for (const line of lines) {
+      history.push({ role: 'assistant', content: line });
+      addBubble('ta', line);
+      await sleep(rand(450, 1100));
+    }
+    saveHistory();
+    markActive();
+  }
+
+  async function proactiveMaybe(kind) {
+    if (paBusy || busy || !cfg.proactive || !configured() || history.length === 0) return;
+    const now = Date.now();
+    let due = false;
+    let maxLines = 1;
+    if (kind === 'away') {
+      due = !!cfg.proactiveLast && (now - cfg.proactiveLast >= PA_AWAY_MIN);
+      maxLines = 3;
+    } else {
+      due = document.visibilityState === 'visible' && !!cfg.proactiveNext && now >= cfg.proactiveNext;
+      maxLines = 2;
+    }
+    if (!due) return;
+
+    paBusy = true;
+    try {
+      const n = maxLines === 1 ? 1 : 1 + Math.floor(Math.random() * maxLines);
+      const lines = await genProactiveLines(n);
+      await pushProactive(lines);
+    } finally {
+      paBusy = false;
+    }
+  }
+
   // ---------- 事件 ----------
   let lastSend = 0;
   function triggerSend() {
@@ -1600,8 +1735,43 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     el.memCat.appendChild(o);
   });
 
-  // 控制台自检：__dbg.buildSystem() 看实际注入的提示词
-  window.__dbg = { buildSystem, consolidateMemory, get mem() { return mem; } };
+  // 系统通知权限（仅当浏览器支持；iOS 需添加到主屏幕后）
+  el.notifBtn.addEventListener('click', async () => {
+    const out = el.notifResult;
+    out.hidden = false;
+    if (!('Notification' in window)) {
+      out.className = 'conn-result err';
+      out.textContent = '这个浏览器不支持通知（iPhone 需先把 App 加到主屏幕）。';
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      out.className = 'conn-result ok';
+      out.textContent = '✅ 通知已开启：App 开着但你在看别的页面时，她主动发消息会弹通知。';
+      return;
+    }
+    out.className = 'conn-result';
+    out.textContent = '正在请求权限…';
+    let perm = Notification.permission;
+    try { perm = await Notification.requestPermission(); } catch (e) {}
+    if (perm === 'granted') {
+      out.className = 'conn-result ok';
+      out.textContent = '✅ 通知已开启。';
+    } else {
+      out.className = 'conn-result err';
+      out.textContent = '没拿到权限；需要时可在浏览器设置里改。';
+    }
+  });
+
+  // 控制台自检：__dbg.buildSystem() 看提示词；__dbg.proactiveTest() 立刻看她主动发消息
+  window.__dbg = {
+    buildSystem,
+    consolidateMemory,
+    get mem() { return mem; },
+    proactiveTest: async () => {
+      const lines = await genProactiveLines(3);
+      await pushProactive(lines);
+    },
+  };
 
   // ---------- 启动 ----------
   // 一次性配置导入：用带 ?key=&model= 的链接打开一次，自动填好并存本机，然后清掉网址参数
@@ -1612,16 +1782,51 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     if (q.get('model')) into.model = q.get('model');
     if (q.get('name')) into.name = q.get('name');
     if (q.get('persona')) into.persona = q.get('persona');
-    if (Object.keys(into).length) {
+    if (q.get('styleNotes')) into.styleNotes = q.get('styleNotes');
+    if (q.get('memory')) into.memory = q.get('memory');
+    if (q.get('examples')) into.examples = q.get('examples');
+    if (q.get('proactive') === '1') into.proactive = true;
+    let importedAny = Object.keys(into).length > 0;
+    if (importedAny) {
       cfg = Object.assign({}, cfg, into);
       saveJSON(CFG_KEY, cfg);
-      history.replaceState(null, '', location.pathname);
     }
+    // 结构化记忆种子：?mem=[{"cat":"fact","text":"…"}]
+    const memRaw = q.get('mem');
+    if (memRaw) {
+      try {
+        const arr = JSON.parse(memRaw);
+        if (Array.isArray(arr)) {
+          const items = [];
+          for (const it of arr) {
+            if (it && isCat(it.cat) && typeof it.text === 'string' && it.text.trim()) {
+              items.push({ id: uid(), cat: it.cat, text: it.text.trim().slice(0, MEM_TEXT_MAX), t: Date.now() });
+            }
+          }
+          if (items.length) {
+            mem = { upto: history.length, lastRun: Date.now(), items: items.slice(0, MEM_ITEMS_MAX) };
+            saveMem();
+            importedAny = true;
+          }
+        }
+      } catch (e) {}
+    }
+    if (importedAny) history.replaceState(null, '', location.pathname);
   } catch (e) {}
 
   refresh();
   renderHistory();
   updateNetBtn();
+
+  // 主动消息：老用户第一次升级时没有水位，先建水位不补发；否则回来就看她的"留言"
+  if (!cfg.proactiveLast) markActive();
+  void proactiveMaybe('away');
+  setInterval(() => { void proactiveMaybe('tick'); }, PA_CHECK_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    const leftLong = !!cfg.proactiveLast && (Date.now() - cfg.proactiveLast >= PA_AWAY_MIN);
+    void proactiveMaybe(leftLong ? 'away' : 'tick');
+  });
 
   // 彻底清理旧版 service worker 与其缓存，以后每次加载都是最新文件
   if ('serviceWorker' in navigator) {
