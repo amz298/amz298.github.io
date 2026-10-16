@@ -1100,7 +1100,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     '8. 用口语不用书面语，不用敬语，不堆砌感叹号；不知道就说不知道或含糊带过，不许编造。\n' +
     '9. 回复长度跟着对方上一句话的长度、话题分量和你们的关系走：对方说六个字，你不要回六十字。\n' +
     '10. 你一次想说好几句时，每句单独占一行（用回车换行分隔），系统会自动把它们拆成多个微信气泡依次发出；绝不要在一行里连写好几句话。\n' +
-    '11. 上方「说话风格校准卡」来自 TA 的真实聊天记录，是说话方式的最高依据；与其下方任何规则冲突，一律以校准卡为准。';
+    '11. 上方「说话风格校准卡」来自 TA 的真实聊天记录，是说话方式的最高依据；与其下方任何规则冲突，一律以校准卡为准。\n' +
+    '12. 直接输出要发给对方的话。严禁输出思考过程、思路、分析、计划、提纲、"### 回复"之类的标题或任何 Markdown 标记——你在心里想，不要写出来。';
 
   function buildSystem() {
     const persona = cfg.persona.trim();
@@ -1169,6 +1170,32 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       if (c) onDelta(c);
     } catch (e) {}
     return false;
+  }
+
+  // 模型偶发把"思路/分析"连同"### 回复"一起吐出来：实时截掉思考段。
+  // 返回 { planning:true/false, reply: 可显示文本（还在思考时为 null） }
+  function splitPlan(raw) {
+    const s = String(raw || '');
+    const thinkRe = /(?:^|[\n。])[ \t]*(?:#{1,6}[ \t]*)?(?:思路|思考(?:过程)?|分析(?:过程)?|推理(?:过程)?|内心(?:OS|os|独白)?|脑内小剧场)\s*[:：]?/;
+    const tm = s.match(thinkRe);
+    if (!tm) return { planning: false, reply: s };
+    const tail = s.slice(tm.index + tm[0].length);
+    // 思考段之后的"回复"出口（取最后一个，防思考里提到这个词）
+    const exitRe = /(?:^|[\n。])[ \t]*(?:#{1,6}[ \t]*)?(?:最终(?:回复|回答)|回复内容|回复|回答|台词|她?要说的话|开口说)\s*[:：]?[ \t]*(?=\n|$)/g;
+    let m, cut = -1;
+    while ((m = exitRe.exec(tail)) !== null) cut = m.index + m[0].length;
+    if (cut < 0) {
+      // 也兼容"回复：xxx"写在同一行
+      const inline = tail.match(/(?:最终)?回复\s*[:：]\s*(?=\S)/);
+      if (inline) return { planning: false, reply: tail.slice(inline.index + inline[0].length) };
+      return { planning: true, reply: null };
+    }
+    return { planning: false, reply: tail.slice(cut) };
+  }
+  // 定稿用：拿到出口后的回复；模型漏写出口时退回原文，避免空消息
+  function sanitizeReply(raw) {
+    const r = splitPlan(raw);
+    return r.reply != null ? r.reply.trim() : String(raw || '').trim();
   }
 
   async function callArk(messages, onDelta, opts) {
@@ -1350,9 +1377,10 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     const first = addBubble('ta', '');
     first.classList.add('typing');
     const lineBubbles = [first];
-    let acc = '';
+    let acc = '';          // 模型原始输出（可能含思考段）
+    let shown = '';        // 过滤后实际显示
     const syncBubbles = () => {
-      const lines = acc.split('\n');
+      const lines = shown.split('\n');
       while (lineBubbles.length < lines.length) {
         lineBubbles[lineBubbles.length - 1].classList.remove('typing');
         lineBubbles.push(addBubble('ta', ''));
@@ -1369,14 +1397,22 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     try {
       if (viaCloud) {
         // 仅弱网降级时走这里：云端整段返回，快速回放
-        const full = await remoteChat(plan, turnId);
-        await revealFull(full, (t) => { acc = t; syncBubbles(); });
+        const full = sanitizeReply(await remoteChat(plan, turnId));
+        await revealFull(full, (t) => { acc = t; shown = splitPlan(t).reply || ''; syncBubbles(); });
       } else {
-        // 前台真流式：模型边想边出字，多气泡实时生长
-        await callArk(plan.messages, (delta) => { acc += delta; syncBubbles(); }, { model: plan.model, tools: plan.tools });
+        // 前台真流式：模型边想边出字；思考段实时藏住，多气泡实时生长
+        await callArk(plan.messages, (delta) => {
+          acc += delta;
+          const sp = splitPlan(acc);
+          shown = sp.reply == null ? '' : sp.reply;
+          syncBubbles();
+        }, { model: plan.model, tools: plan.tools });
       }
 
-      // 收尾：丢掉空白行对应的气泡，保留的逐句定稿
+      // 收尾：剥离思考段，丢掉空白行对应的气泡，保留的逐句定稿
+      acc = sanitizeReply(acc);
+      shown = acc;
+      syncBubbles();
       let lines = acc.split('\n');
       while (lineBubbles.length > lines.length) {
         const b = lineBubbles.pop();
