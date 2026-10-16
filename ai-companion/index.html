@@ -64,6 +64,7 @@ body {
 .topbar .status { font-size: 12px; color: var(--muted); margin-top: 1px; }
 .status.ok { color: var(--green); }
 .status.err { color: var(--danger); }
+.status.idle { visibility: hidden; }   /* 平时不显示，顶栏只留名字；保留占位不跳动 */
 
 /* 聊天区 */
 .chat {
@@ -637,8 +638,9 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       el.status.textContent = '未连接（去设置填 API Key 和模型）';
       el.status.className = 'status';
     } else {
-      el.status.textContent = cfg.name ? `正在扮演 ${cfg.name}` : '已连接';
-      el.status.className = 'status ok';
+      // 已配置：状态行平时隐藏，只在输入中/失败/切后台时临时出现
+      el.status.textContent = '';
+      el.status.className = 'status idle';
     }
   }
 
@@ -1274,8 +1276,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         lineBubbles.forEach((b) => b.remove());
         addBubble('ta', '（空回复）');
       }
-      el.status.textContent = '正在扮演 ' + (cfg.name || 'Ta');
-      el.status.className = 'status ok';
+      el.status.textContent = '';
+      el.status.className = 'status idle';
       markActive();             // 刚说过话，推后她下次主动的时间
       void maybeAutoMemory();   // 后台静默整理，不 await、不影响界面
 
