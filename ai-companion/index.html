@@ -421,6 +421,19 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         </div>
         <p id="notifResult" class="conn-result" hidden></p>
 
+        <hr />
+        <label>角色包导入 / 备份 <span class="hint">（换设备或在桌面 App 里恢复角色用）</span></label>
+        <input id="packUrl" type="text" placeholder="角色包网址，例如 wanwan.json" />
+        <div class="row">
+          <button type="button" class="test-btn" id="packFetch">从网址加载并导入</button>
+          <button type="button" class="test-btn" id="packExport">导出当前配置</button>
+        </div>
+        <textarea id="packInput" rows="5" placeholder="也可以把角色包 JSON 直接粘贴在这里，再点下面的导入"></textarea>
+        <div class="row">
+          <button type="button" class="primary" id="packImport">导入粘贴的角色包</button>
+        </div>
+        <p id="packResult" class="conn-result" hidden></p>
+
         <div class="row">
           <button class="primary" id="saveSettings">保存</button>
           <button class="danger" id="clearChat">清空对话</button>
@@ -513,6 +526,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     memCat: $('memCat'), memText: $('memText'), memAdd: $('memAdd'),
     memList: $('memList'), memClear: $('memClear'),
     cfgProactive: $('cfgProactive'), notifBtn: $('notifBtn'), notifResult: $('notifResult'),
+    packUrl: $('packUrl'), packFetch: $('packFetch'), packExport: $('packExport'),
+    packInput: $('packInput'), packImport: $('packImport'), packResult: $('packResult'),
   };
 
   let cfg = loadJSON(CFG_KEY, DEFAULTS);
@@ -1145,6 +1160,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     el.memResult.hidden = true;
     el.cfgProactive.checked = !!cfg.proactive;
     el.notifResult.hidden = true;
+    if (!el.packUrl.value) el.packUrl.value = 'wanwan.json';
+    el.packResult.hidden = true;
     el.mask.classList.remove('hidden');
   }
   function syncFromFields() {
@@ -1664,6 +1681,123 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     }
   }
 
+  // ================= 角色包导入 / 导出 =================
+  // 字段白名单：导入绝不碰连接相关字段（base/key/model/searchModel）和头像
+  const PACK_FIELDS = ['name', 'persona', 'styleNotes', 'examples', 'memory'];
+
+  function importPack(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new Error('不是有效的角色包');
+    let nFields = 0;
+    for (const k of PACK_FIELDS) {
+      if (typeof obj[k] === 'string') { cfg[k] = obj[k]; nFields++; }
+    }
+    if (typeof obj.proactive === 'boolean') cfg.proactive = obj.proactive;
+
+    let nMem = 0;
+    if (Array.isArray(obj.mem)) {
+      const items = [];
+      for (const it of obj.mem) {
+        if (it && isCat(it.cat) && typeof it.text === 'string' && it.text.trim()) {
+          items.push({ id: uid(), cat: it.cat, text: it.text.trim().slice(0, MEM_TEXT_MAX), t: Date.now() });
+        }
+      }
+      if (items.length) {
+        mem = { upto: history.length, lastRun: Date.now(), items: items.slice(0, MEM_ITEMS_MAX) };
+        nMem = mem.items.length;
+      }
+    }
+
+    if (!nFields && !nMem) throw new Error('角色包里没有可导入的内容');
+    saveJSON(CFG_KEY, cfg);
+    saveMem();
+    if (!cfg.proactiveLast) markActive();
+
+    // 设置页若正开着，把新值同步到界面
+    if (!el.mask.classList.contains('hidden')) {
+      PACK_FIELDS.forEach((k) => {
+        const node = k === 'name' ? el.cfgName
+          : k === 'persona' ? el.cfgPersona
+          : k === 'styleNotes' ? el.cfgStyleNotes
+          : k === 'examples' ? el.cfgExamples : el.cfgMemory;
+        node.value = cfg[k];
+      });
+      el.cfgProactive.checked = !!cfg.proactive;
+      renderMemList();
+      updateMemMeta();
+    }
+    refresh();
+    renderHistory();
+    return { nFields, nMem };
+  }
+
+  async function fetchPack() {
+    const out = el.packResult;
+    out.hidden = false;
+    const raw = el.packUrl.value.trim();
+    if (!raw) {
+      out.className = 'conn-result err';
+      out.textContent = '填角色包网址（例如 wanwan.json）';
+      return;
+    }
+    out.className = 'conn-result';
+    out.textContent = '正在下载角色包…';
+    try {
+      const url = new URL(raw, location.href);
+      const res = await fetch(url.href, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const obj = await res.json();
+      const r = importPack(obj);
+      out.className = 'conn-result ok';
+      out.textContent = '✅ 导入成功（' + r.nFields + ' 个字段' + (r.nMem ? '，' + r.nMem + ' 条记忆' : '') + '）。';
+    } catch (e) {
+      out.className = 'conn-result err';
+      out.textContent = '导入失败：' + (e.message || e) + '（网址要和页面同域；本地用 http 打开而不是双击文件）';
+    }
+  }
+
+  function importPasted() {
+    const out = el.packResult;
+    out.hidden = false;
+    const obj = extractJSON(el.packInput.value);
+    if (!obj) {
+      out.className = 'conn-result err';
+      out.textContent = '粘贴的内容不是可识别的 JSON';
+      return;
+    }
+    try {
+      const r = importPack(obj);
+      out.className = 'conn-result ok';
+      out.textContent = '✅ 导入成功（' + r.nFields + ' 个字段' + (r.nMem ? '，' + r.nMem + ' 条记忆' : '') + '）。';
+    } catch (e) {
+      out.className = 'conn-result err';
+      out.textContent = '导入失败：' + (e.message || e);
+    }
+  }
+
+  function exportPack() {
+    const out = el.packResult;
+    const pack = {
+      name: cfg.name, persona: cfg.persona, styleNotes: cfg.styleNotes,
+      examples: cfg.examples, memory: cfg.memory, proactive: !!cfg.proactive,
+      apiKey: cfg.apiKey, model: cfg.model, searchModel: cfg.searchModel, base: cfg.base,
+      mem: mem.items.map((it) => ({ cat: it.cat, text: it.text })),
+    };
+    const text = JSON.stringify(pack, null, 2);
+    el.packInput.value = text;
+    out.hidden = false;
+    out.className = 'conn-result ok';
+    let copied = false;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        out.textContent = '✅ 已复制到剪贴板，也显示在上方文本框。⚠ 内容含 API Key，别发给别人。';
+      }).catch(() => {
+        out.textContent = '已生成在上方文本框，可全选复制。⚠ 内容含 API Key，别发给别人。';
+      });
+    } else {
+      out.textContent = '已生成在上方文本框，可全选复制。⚠ 内容含 API Key，别发给别人。';
+    }
+  }
+
   // ---------- 事件 ----------
   let lastSend = 0;
   function triggerSend() {
@@ -1761,6 +1895,11 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       out.textContent = '没拿到权限；需要时可在浏览器设置里改。';
     }
   });
+
+  // 角色包
+  el.packFetch.addEventListener('click', fetchPack);
+  el.packImport.addEventListener('click', importPasted);
+  el.packExport.addEventListener('click', exportPack);
 
   // 控制台自检：__dbg.buildSystem() 看提示词；__dbg.proactiveTest() 立刻看她主动发消息
   window.__dbg = {
