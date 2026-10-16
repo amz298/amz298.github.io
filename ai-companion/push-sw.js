@@ -1,4 +1,4 @@
-/* AI 陪伴推送 Service Worker —— 只处理 Web Push，不拦截/不缓存页面请求。 */
+/* AI 陪伴推送 Service Worker —— 只处理 Web Push（回复 reply / 主动消息 proactive），不拦截页面请求。 */
 'use strict';
 
 const Q_NAME = 'ai_push_queue';
@@ -32,25 +32,28 @@ self.addEventListener('push', (event) => {
   try { payload = event.data ? event.data.json() : {}; }
   catch (e) { payload = {}; }
 
-  event.waitUntil((async () => {
-    if (payload.type === 'reply' && payload.text) {
-      const q = await readQueue();
-      q.push(payload);
-      await writeQueue(q);
-      await notifyClients();
+  const isReply = payload.type === 'reply' && payload.text;
+  const isProactive = payload.type === 'proactive' && payload.text;
 
-      // 前台正开着就不弹横幅（页面自己会补消息），否则显示锁屏通知
-      const cs = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
-      const visible = cs.some((c) => c.visibilityState === 'visible');
-      if (!visible) {
-        await self.registration.showNotification(payload.name || 'Ta', {
-          body: payload.text.split('\n')[0],
-          icon: 'icon.png',
-          badge: 'icon.png',
-          tag: payload.turnId || undefined,
-          data: { turnId: payload.turnId },
-        });
-      }
+  event.waitUntil((async () => {
+    if (!isReply && !isProactive) return;
+
+    const q = await readQueue();
+    q.push(payload);
+    await writeQueue(q);
+    await notifyClients();
+
+    // 前台正开着聊天页就不弹横幅（页面自己补消息），否则显示锁屏通知
+    const cs = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+    const visible = cs.some((c) => c.visibilityState === 'visible');
+    if (!visible) {
+      await self.registration.showNotification(payload.name || 'Ta', {
+        body: payload.text.split('\n')[0],
+        icon: 'icon.png',
+        badge: 'icon.png',
+        tag: payload.turnId || payload.id || undefined,
+        data: { turnId: payload.turnId, id: payload.id },
+      });
     }
   })());
 });

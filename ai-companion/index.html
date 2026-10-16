@@ -1280,6 +1280,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       el.status.className = 'status idle';
       markActive();             // 刚说过话，推后她下次主动的时间
       void maybeAutoMemory();   // 后台静默整理，不 await、不影响界面
+      void syncState();         // 把最新对话同步给云端
 
       // 本轮切到过后台：像微信一样在回复到达时弹通知
       if (!alreadyAnswered && bgDuringTurn && acc && 'Notification' in window && Notification.permission === 'granted') {
@@ -2031,13 +2032,50 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       }
     } catch (e) {}
     try {
-      await navigator.serviceWorker.register('./push-sw.js?v=1');
+      await navigator.serviceWorker.register('./push-sw.js?v=2');
     } catch (e) {
       console.warn('push-sw 注册失败', e);
     }
   }
 
   // 读 SW 缓存里的推送队列，把回复补进对话（按 turnId 去重）
+  // 她在云端主动发来的消息：追加进对话（按 id 去重），并告诉云端已补单
+  const pendingAck = [];
+  function applyProactive(p) {
+    if (!p || !p.id || !p.text) return false;
+    if (history.some((m) => m.paId === p.id)) return false;
+    history.push({ role: 'assistant', content: p.text, paId: p.id });
+    saveHistory();
+    for (const ln of p.text.split('\n')) {
+      if (ln.trim()) addBubble('ta', ln);
+    }
+    el.chat.scrollTop = el.chat.scrollHeight;
+    pendingAck.push(p.id);
+    scheduleAck();
+    refresh();
+    markActive();              // 她刚主动过，前台计时器重置，不重复主动
+    void maybeAutoMemory();
+    return true;
+  }
+
+  let ackTimer = null;
+  function scheduleAck() {
+    clearTimeout(ackTimer);
+    ackTimer = setTimeout(ackProactive, 1500);
+  }
+  async function ackProactive() {
+    const fn = (cfg.fnUrl || '').trim();
+    const ids = pendingAck.splice(0);
+    if (!fn || !ids.length) return;
+    try {
+      await fetch(fn.replace(/\/*$/, '') + '/ack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+    } catch (e) {}
+  }
+
   async function consumePushQueue() {
     if (!('caches' in window)) return;
     let arr = null;
@@ -2051,6 +2089,10 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     if (!Array.isArray(arr)) return;
 
     for (const p of arr) {
+      if (p && p.type === 'proactive') {
+        applyProactive(p);
+        continue;
+      }
       if (!p || p.type !== 'reply' || !p.text) continue;
       if (p.turnId && history.some((m) => m.role === 'assistant' && m.turnId === p.turnId)) continue;
       const last = history[history.length - 1];
@@ -2068,6 +2110,40 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       markActive();
       void maybeAutoMemory();
     }
+  }
+
+  // 把角色快照与近期对话同步给云端（定时主动发言的素材）
+  async function syncState() {
+    const fn = (cfg.fnUrl || '').trim();
+    if (!fn) return;
+    const recentText = history.slice(-14).map((m) => {
+      if (m.role === 'user') return '我: ' + (m.content || '');
+      if (m.role === 'assistant') return (cfg.name || 'Ta') + ': ' + (m.content || '');
+      return '';
+    }).filter(Boolean).join('\n');
+    try {
+      await fetch(fn.replace(/\/*$/, '') + '/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: {
+            name: cfg.name, persona: cfg.persona, styleNotes: cfg.styleNotes,
+            recentText, proactive: cfg.proactive !== false,
+          },
+        }),
+      });
+    } catch (e) {}
+  }
+
+  // 主动消息兜底：直接问云端要未补单的消息（推送丢失/换设备时）
+  async function fetchPending() {
+    const fn = (cfg.fnUrl || '').trim();
+    if (!fn) return;
+    try {
+      const res = await fetch(fn.replace(/\/*$/, '') + '/pending', { cache: 'no-store' });
+      const j = await res.json();
+      if (Array.isArray(j.items)) j.items.forEach(applyProactive);
+    } catch (e) {}
   }
 
   function isStandalonePWA() {
@@ -2308,6 +2384,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       void resumeTurn();        // 先把被后台打断的回复续上
       const leftLong = !!cfg.proactiveLast && (Date.now() - cfg.proactiveLast >= PA_AWAY_MIN);
       void proactiveMaybe(leftLong ? 'away' : 'tick');
+      void fetchPending();      // 兜底拉取云端主动消息
     }
   });
 
@@ -2320,6 +2397,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   // 推送 SW：注册 push-sw.js（不缓存页面）、卸掉旧版 sw.js、接收后台回复
   void setupPushSW().then(() => {
     void consumePushQueue();
+    void syncState();
+    void fetchPending();
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', (e) => {
         if (e.data && e.data.type === 'push-queued') void consumePushQueue();
