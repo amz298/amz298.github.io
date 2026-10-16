@@ -1210,11 +1210,31 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     });
   }
 
-  // 等模型回复一轮（假定 history 末尾是待回复的用户消息）。后台挂起时不判失败、回前台自动续。
-  async function runTurn(turnId, isRetry) {
+  // 切后台瞬间把本轮交给云函数：云端重跑并推送回复到锁屏（每个 turnId 只交一次）
+  async function cloudRelay(plan, turnId) {
+    const base = (cfg.fnUrl || '').trim().replace(/\/*$/, '');
+    if (!base || cloudTaken.has(turnId)) return;
+    cloudTaken.add(turnId);
+    try {
+      await fetch(base + '/relay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: plan.messages, model: plan.model, webSearch: !!plan.useSearch,
+          turnId: turnId, name: cfg.name || '',
+        }),
+      });
+    } catch (e) {}
+  }
+
+  // 等模型回复一轮（假定 history 末尾是待回复的用户消息）。
+  // 前台一律直连方舟真流式（首字 1~2 秒）；切后台由云函数接管推送；弱网时云函数兜底。
+  async function runTurn(turnId, isRetry, viaCloud) {
     const plan = buildCallPlan();
     const useCloud = !!(cfg.fnUrl || '').trim();
     let retrying = false;
+    activePlan = plan;
+    activeTurnId = turnId;
     busy = true;
     bgDuringTurn = false;
     el.send.disabled = true;
@@ -1242,10 +1262,12 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     };
 
     try {
-      if (useCloud) {
+      if (viaCloud) {
+        // 仅弱网降级时走这里：云端整段返回，快速回放
         const full = await remoteChat(plan, turnId);
         await revealFull(full, (t) => { acc = t; syncBubbles(); });
       } else {
+        // 前台真流式：模型边想边出字，多气泡实时生长
         await callArk(plan.messages, (delta) => { acc += delta; syncBubbles(); }, { model: plan.model, tools: plan.tools });
       }
 
@@ -1296,20 +1318,22 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       // 页面在后台 / 刚切后台不久：请求是被系统挂起掐断的，不算失败，保留用户消息，回前台自动续
       const bgInterrupt = document.hidden || (hiddenAt && Date.now() - hiddenAt < 20000);
       if (bgInterrupt) {
+        // 直连流被系统掐断：交给云函数重跑，回复走锁屏推送；云端模式本身就会推
+        if (!viaCloud) void cloudRelay(plan, turnId);
         resumePending = true;
-        el.status.textContent = '已切到后台，回到页面会自动继续';
+        el.status.textContent = '已切到后台，回复会推送到锁屏';
         el.status.className = 'status';
         return;
       }
 
-      // 前台网络抖动（Wi-Fi/蜂窝切换、弱网）：悄悄自动重试一次，不打扰用户
+      // 前台网络抖动（Wi-Fi/蜂窝切换、弱网）：悄悄自动重试；配了云函数则改走云端兜底
       const netBlip = /Failed to fetch|NetworkError|Load failed|fetch failed/i.test(raw);
       if (netBlip && !isRetry) {
         retrying = true;
-        el.status.textContent = '网络抖动，正在重试…';
+        el.status.textContent = useCloud && !viaCloud ? '网络抖动，正在切换云端…' : '网络抖动，正在重试…';
         el.status.className = 'status';
         await new Promise((r) => setTimeout(r, 1500));
-        return runTurn(turnId, true);
+        return runTurn(turnId, true, useCloud);
       }
 
       let tip = raw;
@@ -1326,6 +1350,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       bgDuringTurn = false;
       if (retrying) return;     // 交给递归的那一轮管理 busy / 发送按钮
       busy = false;
+      activePlan = null;
+      activeTurnId = null;
       el.send.disabled = false;
       if (!document.hidden) el.input.focus();
     }
@@ -1791,9 +1817,12 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
 
   // ================= 主动消息（前台随机主动 + 回来补发） =================
   let paBusy = false;
-  let hiddenAt = 0;             // 最近一次切到后台的时刻
+  let hiddenAt = 0;             // 最近一次切后台的时刻
   let resumePending = false;    // 用户消息已发、回复被后台打断，待回前台续
   let bgDuringTurn = false;     // 本轮回复期间是否切过后台
+  const cloudTaken = new Set(); // 已交云函数接管的 turnId，防重复发起
+  let activePlan = null;        // 当前进行中的调用参数（切后台时云端接管用）
+  let activeTurnId = null;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -2124,6 +2153,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       }
       if (!p || p.type !== 'reply' || !p.text) continue;
       if (p.turnId && history.some((m) => m.role === 'assistant' && m.turnId === p.turnId)) continue;
+      // 这一轮前台正实时流式接收中：忽略云端补发，避免重复
+      if (p.turnId && busy && activeTurnId === p.turnId) continue;
       const last = history[history.length - 1];
       const match = last && last.role === 'user' && (!p.turnId || last.turnId === p.turnId);
       if (!match) continue;
@@ -2407,7 +2438,11 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       hiddenAt = Date.now();
-      if (busy) bgDuringTurn = true;
+      if (busy) {
+        bgDuringTurn = true;
+        // 立刻把本轮交给云函数（不等 fetch 报错），回复走锁屏推送
+        if (activePlan && activeTurnId) void cloudRelay(activePlan, activeTurnId);
+      }
       return;
     }
     if (document.visibilityState === 'visible') {
@@ -2416,6 +2451,11 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       void proactiveMaybe(leftLong ? 'away' : 'tick');
       void fetchPending();      // 兜底拉取云端主动消息
     }
+  });
+  // 直接划掉 App：pagehide 也交一次云端（cloudTaken 去重）
+  window.addEventListener('pagehide', () => {
+    hiddenAt = Date.now();
+    if (busy && activePlan && activeTurnId) void cloudRelay(activePlan, activeTurnId);
   });
 
   // 上次在后台时直接划掉了 App：重开后最后一条是用户消息，自动补回复
