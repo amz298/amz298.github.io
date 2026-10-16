@@ -1,6 +1,10 @@
 /* AI 陪伴推送 Service Worker —— 只处理 Web Push（回复 reply / 主动消息 proactive），不拦截页面请求。 */
 'use strict';
 
+// 新版 SW 立即接管，避免老版本卡在 waiting
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
 const Q_NAME = 'ai_push_queue';
 const Q_URL = 'https://ai-companion.local/queue.json';
 
@@ -51,8 +55,11 @@ self.addEventListener('push', (event) => {
         body: payload.text.split('\n')[0],
         icon: 'icon.png',
         badge: 'icon.png',
-        tag: payload.turnId || payload.id || undefined,
-        data: { turnId: payload.turnId, id: payload.id },
+        // 主动消息多句各一条通知（part 区分，不互相覆盖）
+        tag: payload.turnId
+          || (payload.id != null && payload.part != null ? payload.id + '-' + payload.part : payload.id)
+          || undefined,
+        data: { turnId: payload.turnId, id: payload.id, part: payload.part },
       });
     }
   })());

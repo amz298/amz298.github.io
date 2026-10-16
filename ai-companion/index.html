@@ -1211,9 +1211,10 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   }
 
   // 等模型回复一轮（假定 history 末尾是待回复的用户消息）。后台挂起时不判失败、回前台自动续。
-  async function runTurn(turnId) {
+  async function runTurn(turnId, isRetry) {
     const plan = buildCallPlan();
     const useCloud = !!(cfg.fnUrl || '').trim();
+    let retrying = false;
     busy = true;
     bgDuringTurn = false;
     el.send.disabled = true;
@@ -1301,6 +1302,16 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         return;
       }
 
+      // 前台网络抖动（Wi-Fi/蜂窝切换、弱网）：悄悄自动重试一次，不打扰用户
+      const netBlip = /Failed to fetch|NetworkError|Load failed|fetch failed/i.test(raw);
+      if (netBlip && !isRetry) {
+        retrying = true;
+        el.status.textContent = '网络抖动，正在重试…';
+        el.status.className = 'status';
+        await new Promise((r) => setTimeout(r, 1500));
+        return runTurn(turnId, true);
+      }
+
       let tip = raw;
       if (/abort|Failed to fetch|NetworkError|Load failed|fetch failed/i.test(raw)) tip = '网络问题，连不上方舟（' + raw + '）';
       else if (raw.indexOf('401') >= 0) tip = 'API Key 不对或过期（HTTP 401），去设置换成「推理 API Key」';
@@ -1312,8 +1323,9 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       history.pop();            // 回滚刚才那条用户消息
       saveHistory();
     } finally {
-      busy = false;
       bgDuringTurn = false;
+      if (retrying) return;     // 交给递归的那一轮管理 busy / 发送按钮
+      busy = false;
       el.send.disabled = false;
       if (!document.hidden) el.input.focus();
     }
@@ -1863,6 +1875,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   }
 
   async function proactiveMaybe(kind) {
+    // 配了云函数：主动消息由云端定时+锁屏推送负责，本地引擎让位，避免两边抢节奏
+    if ((cfg.fnUrl || '').trim()) return;
     if (paBusy || busy || !cfg.proactive || !configured() || history.length === 0) return;
     const now = Date.now();
     let due = false;
@@ -2032,7 +2046,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       }
     } catch (e) {}
     try {
-      await navigator.serviceWorker.register('./push-sw.js?v=2');
+      await navigator.serviceWorker.register('./push-sw.js?v=3');
     } catch (e) {
       console.warn('push-sw 注册失败', e);
     }
@@ -2041,20 +2055,35 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   // 读 SW 缓存里的推送队列，把回复补进对话（按 turnId 去重）
   // 她在云端主动发来的消息：追加进对话（按 id 去重），并告诉云端已补单
   const pendingAck = [];
+  // 主动消息逐条冒：正在输入…→ 一句 → 停顿 → 再一句；多条未读排队依次播放
+  let paRevealChain = Promise.resolve();
+  const paWait = (ms) => new Promise((r) => setTimeout(r, ms));
+
   function applyProactive(p) {
     if (!p || !p.id || !p.text) return false;
     if (history.some((m) => m.paId === p.id)) return false;
-    history.push({ role: 'assistant', content: p.text, paId: p.id });
+    const full = p.fullText || p.text;
+    history.push({ role: 'assistant', content: full, paId: p.id });
     saveHistory();
-    for (const ln of p.text.split('\n')) {
-      if (ln.trim()) addBubble('ta', ln);
-    }
-    el.chat.scrollTop = el.chat.scrollHeight;
     pendingAck.push(p.id);
     scheduleAck();
     refresh();
     markActive();              // 她刚主动过，前台计时器重置，不重复主动
     void maybeAutoMemory();
+
+    const lines = full.split('\n').map((s) => s.trim()).filter(Boolean);
+    paRevealChain = paRevealChain.then(async () => {
+      for (let i = 0; i < lines.length; i++) {
+        const b = addBubble('ta', '');
+        b.classList.add('typing');
+        el.chat.scrollTop = el.chat.scrollHeight;
+        await paWait(500 + Math.random() * 600);          // 先"输入"一会
+        b.querySelector('.bubble').textContent = lines[i];
+        b.classList.remove('typing');
+        el.chat.scrollTop = el.chat.scrollHeight;
+        if (i < lines.length - 1) await paWait(900 + Math.random() * 1200); // 句间停顿
+      }
+    });
     return true;
   }
 
@@ -2128,7 +2157,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         body: JSON.stringify({
           state: {
             name: cfg.name, persona: cfg.persona, styleNotes: cfg.styleNotes,
-            recentText, proactive: cfg.proactive !== false,
+            recentText, memBlock: buildMemoryBlock(),
+            proactive: cfg.proactive !== false,
           },
         }),
       });
