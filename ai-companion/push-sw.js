@@ -7,18 +7,25 @@ self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim(
 
 const Q_NAME = 'ai_push_queue';
 const Q_URL = 'https://ai-companion.local/queue.json';
+const Q_MAX = 100;
+const Q_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-async function readQueue() {
+async function queuePush(payload) {
   const c = await caches.open(Q_NAME);
-  const r = await c.match(Q_URL);
-  if (!r) return [];
-  try { const a = await r.json(); return Array.isArray(a) ? a : []; }
-  catch (e) { return []; }
-}
-
-async function writeQueue(arr) {
-  const c = await caches.open(Q_NAME);
-  await c.put(Q_URL, new Response(JSON.stringify(arr.slice(-20)), {
+  const now = Date.now();
+  const entries = (await c.keys()).filter((r) => r.url.startsWith(Q_URL + '?id='));
+  const recent = [];
+  for (const request of entries) {
+    const stamp = Number(new URL(request.url).searchParams.get('id').split('-')[0]);
+    if (!Number.isFinite(stamp) || now - stamp > Q_MAX_AGE_MS) await c.delete(request);
+    else recent.push({ request, stamp });
+  }
+  recent.sort((a, b) => a.stamp - b.stamp);
+  while (recent.length >= Q_MAX) await c.delete(recent.shift().request);
+  // Each push has its own entry, so a page reading the queue cannot overwrite
+  // a push that arrives at the same time.
+  const id = Date.now() + '-' + Math.random().toString(36).slice(2);
+  await c.put(Q_URL + '?id=' + id, new Response(JSON.stringify(payload), {
     headers: { 'Content-Type': 'application/json' },
   }));
 }
@@ -42,17 +49,21 @@ self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     if (!isReply && !isProactive) return;
 
-    const q = await readQueue();
-    q.push(payload);
-    await writeQueue(q);
-    await notifyClients();
+    try {
+      await queuePush(payload);
+      await notifyClients();
+    } catch (e) {
+      // A full browser cache should not suppress the visible notification.
+      console.warn('推送缓存写入失败', e);
+    }
 
     // 前台正开着聊天页就不弹横幅（页面自己补消息），否则显示锁屏通知
     const cs = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
     const visible = cs.some((c) => c.visibilityState === 'visible');
     if (!visible) {
       await self.registration.showNotification(payload.name || 'Ta', {
-        body: payload.text.split('\n')[0],
+        // 主动消息是合并成一条推的：body 带全两行；回复仍只取首行保持紧凑
+        body: isProactive ? payload.text : payload.text.split('\n')[0],
         icon: 'icon.png',
         badge: 'icon.png',
         // 主动消息多句各一条通知（part 区分，不互相覆盖）
