@@ -273,11 +273,26 @@ body.in-chat #listHeader { display: none; }
   border-radius: 8px;
   color: var(--text);
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1.5;
   outline: none;
   font-family: inherit;
-  resize: vertical;
 }
+/* 设置里的大文本框：够高、字号大、随内容自动伸展（封顶 60vh 后内部滚动）*/
+.sheet-body textarea {
+  padding: 12px 14px;
+  resize: none;
+  overflow-y: hidden;
+  min-height: 110px;
+  max-height: 60vh;
+  scrollbar-width: thin;
+}
+#cfgPersona { min-height: 190px; }
+#cfgStyleNotes { min-height: 150px; }
+#cfgMemory { min-height: 100px; }
+#cfgExamples { min-height: 170px; }
+#cfgHabits { min-height: 92px; }
+#packInput { min-height: 110px; }
 .sheet-body .hint { color: var(--muted); font-size: 12px; }
 .avatar-row { display: flex; align-items: center; gap: 10px; }
 .avatar-preview {
@@ -2139,6 +2154,22 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   }
 
   // ---------- 设置 ----------
+  // 设置页文本框随内容自动长高（封顶 60vh，超出内部滚动）
+  function growField(t) {
+    if (!t || t.offsetParent === null) return;   // 隐藏时不算高度
+    t.style.height = 'auto';
+    const cap = Math.floor(window.innerHeight * 0.6);
+    const h = Math.min(t.scrollHeight, cap);
+    t.style.height = h + 'px';
+    t.style.overflowY = t.scrollHeight > cap ? 'auto' : 'hidden';
+  }
+  function growAllFields() {
+    document.querySelectorAll('.sheet-body textarea').forEach(growField);
+  }
+  document.querySelectorAll('.sheet-body textarea').forEach((t) =>
+    t.addEventListener('input', () => growField(t)));
+  window.addEventListener('resize', growAllFields);
+
   function openSettings() {
     el.cfgBase.value = cfg.base;
     el.cfgKey.value = cfg.apiKey;
@@ -2165,6 +2196,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     if (!el.packUrl.value) el.packUrl.value = 'wanwan.json';
     el.packResult.hidden = true;
     el.mask.classList.remove('hidden');
+    requestAnimationFrame(growAllFields);   // 面板显示后再量高度
   }
   function syncFromFields() {
     cfg.base = el.cfgBase.value.trim() || DEFAULTS.base;
@@ -2454,6 +2486,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   function adoptLearn() {
     if (learntNotes) el.cfgStyleNotes.value = learntNotes.slice(0, 1500);
     if (learntPairs.length) el.cfgExamples.value = mergeLearntExamples(el.cfgExamples.value, learntPairs);
+    growAllFields();
     syncFromFields();
     el.learnReview.hidden = true;
     flashToast('已采用，风格卡和样例已保存');
@@ -2838,6 +2871,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       el.cfgProactive.checked = !!cfg.proactive;
       renderMemList();
       updateMemMeta();
+      growAllFields();
     }
     refresh();
     renderHistory();
