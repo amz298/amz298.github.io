@@ -72,9 +72,10 @@ body:not(.in-chat) #chatHeader { display: none; }
 body:not(.in-chat) #chat { display: none; }
 body:not(.in-chat) #composer { display: none; }
 body.in-chat #listScreen { display: none; }
+body.in-chat #listHeader { display: none; }
 .list-screen {
   flex: 1; min-height: 0; overflow-y: auto;
-  background: var(--chatbg);
+  background: #fff;
 }
 
 /* 聊天区 */
@@ -88,9 +89,9 @@ body.in-chat #listScreen { display: none; }
   scroll-behavior: smooth;
   background: var(--chatbg);
 }
-.msg { max-width: 76%; display: flex; }
-.msg.me { align-self: flex-end; gap: 8px; align-items: flex-start; flex-direction: row; }
-.msg.ta { align-self: flex-start; gap: 8px; align-items: flex-start; }
+.msg { max-width: 72%; display: flex; }
+.msg.me { align-self: flex-end; gap: 10px; align-items: flex-start; flex-direction: row; }
+.msg.ta { align-self: flex-start; gap: 10px; align-items: flex-start; }
 /* 我的默认头像色调（区别于 TA 的绿紫渐变） */
 .avatar-img.me {
   background: linear-gradient(135deg, #7a8a99, #4a5a6a);
@@ -103,7 +104,7 @@ body.in-chat #listScreen { display: none; }
   line-height: 1.4;
 }
 .avatar-img {
-  flex: none; width: 36px; height: 36px;
+  flex: none; width: 40px; height: 40px;
   border-radius: 6px;
   background: linear-gradient(135deg, #07c160, #7c5cff);
   background-size: cover; background-position: center;
@@ -111,29 +112,47 @@ body.in-chat #listScreen { display: none; }
   display: grid; place-items: center;
 }
 .bubble {
-  padding: 9px 12px;
+  padding: 10px 12px;
   border-radius: 8px;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 16px;
+  font-size: 17px;
   color: #000;
   position: relative;
 }
-.msg.me .bubble { background: var(--mine); border-top-right-radius: 2px; }
-.msg.ta .bubble { background: var(--theirs); border-top-left-radius: 2px; box-shadow: 0 1px 1px rgba(0,0,0,.05); }
+/* 微信式气泡：白/绿 + 朝头像的小尾巴 */
+.msg.ta .bubble {
+  background: var(--theirs);
+  border-top-left-radius: 3px;
+  box-shadow: 0 1px 1px rgba(0,0,0,.05);
+}
+.msg.ta .bubble::before {
+  content: ''; position: absolute; left: -6px; top: 12px;
+  border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+  border-right: 6px solid var(--theirs);
+}
+.msg.me .bubble {
+  background: var(--mine);
+  border-top-right-radius: 3px;
+}
+.msg.me .bubble::before {
+  content: ''; position: absolute; right: -6px; top: 12px;
+  border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+  border-left: 6px solid var(--mine);
+}
 .typing .bubble { color: var(--muted); }
 .typing .bubble::after { content: " ···"; animation: blink 1.2s infinite; }
 @keyframes blink { 0%,100%{opacity:.2} 50%{opacity:1} }
 
 .hint-block {
   align-self: center;
-  color: var(--muted);
-  font-size: 13px;
+  color: #b2b2b2;
+  font-size: 12px;
   text-align: center;
-  padding: 7px 14px;
-  background: rgba(0,0,0,.04);
-  border-radius: 6px;
+  padding: 6px 12px;
+  background: rgba(0,0,0,.045);
+  border-radius: 4px;
 }
 .hint-block button { margin-left: 8px; border: 0; background: none; color: var(--green); font: inherit; font-weight: 600; cursor: pointer; }
 .toast {
@@ -156,8 +175,8 @@ body.in-chat #listScreen { display: none; }
 .composer {
   padding: 8px 10px;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
-  background: var(--composer-bg);
-  border-top: 1px solid var(--border);
+  background: #f7f7f7;           /* 微信输入栏浅灰底 */
+  border-top: 1px solid #e5e5e5;
 }
 .composer-row { display: flex; gap: 8px; align-items: flex-end; }
 .input-wrap { flex: 1; min-width: 0; }
@@ -165,8 +184,8 @@ body.in-chat #listScreen { display: none; }
   width: 100%;
   resize: none;
   background: #fff;
-  border: 1px solid #e6e6e6;
-  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
   color: var(--text);
   padding: 9px 12px;
   font-size: 16px;
@@ -321,41 +340,49 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
 .check-row input { flex: none; width: 18px; height: 18px; }
 
 /* 会话列表（微信式：头像 + 名字/时间 + 最后一句 + 未读红点） */
-.chat-list { display: flex; flex-direction: column; background: var(--panel); }
+.chat-list { display: flex; flex-direction: column; background: #fff; }
 .chat-row {
   display: flex; align-items: center; gap: 12px; width: 100%;
   padding: 12px 14px; background: transparent; border: none;
-  border-bottom: 1px solid var(--border); border-radius: 0;
   cursor: pointer; text-align: left; font: inherit; color: var(--text);
+  position: relative;
 }
-.chat-row:active { background: #f0f0f0; }
-.chat-row.active { background: #f3f3f3; }
+.chat-row:active, .chat-row.active { background: #f0f0f0; }
+/* 微信式分隔线：从头像右侧起的一条细线 */
+.chat-row:not(:last-child)::after {
+  content: ''; position: absolute; left: 76px; right: 0; bottom: 0;
+  height: 1px; background: #efefef;
+}
 .chat-av {
-  flex: none; width: 50px; height: 50px; border-radius: 8px;
+  flex: none; width: 46px; height: 46px; border-radius: 6px;
   background: linear-gradient(135deg, #07c160, #7c5cff);
   background-size: cover; background-position: center;
-  color: #fff; font-size: 20px; font-weight: 600;
+  color: #fff; font-size: 19px; font-weight: 600;
   display: grid; place-items: center; position: relative;
 }
-.chat-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.chat-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.chat-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.chat-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .chat-name {
   flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: 16px; font-weight: 600; color: #000;
+  font-size: 17px; font-weight: 500; color: #000;
 }
-.chat-time { flex: none; color: var(--muted); font-size: 12px; }
-.chat-prev { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-time { flex: none; color: #b2b2b2; font-size: 12px; padding-top: 2px; }
+.chat-prev { font-size: 14px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge {
   position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px;
   border-radius: 9px; background: var(--danger); color: #fff;
   font-size: 11px; font-weight: 600; line-height: 18px;
-  text-align: center; padding: 0 4px;
+  text-align: center; padding: 0 4px; box-sizing: border-box;
 }
 .chat-x {
-  flex: none; width: 26px; height: 26px; border-radius: 50%;
-  display: grid; place-items: center; color: var(--danger);
-  background: #f5f5f5; border: none; font-size: 13px; cursor: pointer; padding: 0;
+  flex: none; width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; color: #aaa;
+  background: transparent; border: none; font-size: 13px; cursor: pointer; padding: 0;
+  opacity: 0; transition: opacity .15s;
 }
+.chat-row.show-x .chat-x { opacity: 1; }
+@media (hover: hover) { .chat-row:hover .chat-x { opacity: 1; } }
+.chat-row:active .chat-x { color: #888; }
 
 /* 新建人物：预设选择 */
 .preset-list { display: flex; flex-direction: column; gap: 8px; }
@@ -395,7 +422,6 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   <!-- 会话列表屏（首页）：所有人物各占一条，点进去聊 -->
   <main id="listScreen" class="list-screen">
     <div id="chatList" class="chat-list"></div>
-    <button type="button" class="test-btn" id="newChat" style="margin:14px 14px 24px;">＋ 新建人物</button>
   </main>
 
   <main id="chat" class="chat" aria-live="polite"></main>
@@ -403,11 +429,11 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   <form id="composer" class="composer">
     <div id="previews" class="previews"></div>
     <div class="composer-row">
-      <div class="input-wrap">
-        <textarea id="input" rows="1" placeholder="输入…" enterkeyhint="send"></textarea>
-      </div>
       <button type="button" id="imgBtn" class="tool" title="发图片/拍一张">＋</button>
       <input type="file" id="fileInput" accept="image/*" multiple hidden />
+      <div class="input-wrap">
+        <textarea id="input" rows="1" enterkeyhint="send"></textarea>
+      </div>
       <button id="send" type="button" class="send-btn" onclick="if(window.__tapSend)window.__tapSend()">发送</button>
     </div>
   </form>
@@ -718,7 +744,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     historyFile: $('historyFile'), historyResult: $('historyResult'),
     cfgFn: $('cfgFn'), subBtn: $('subBtn'), subResult: $('subResult'),
     openChats: $('openChats'), newChatTop: $('newChatTop'), listStatus: $('listStatus'),
-    newChat: $('newChat'), chatList: $('chatList'),
+    chatList: $('chatList'),
     presetMask: $('presetMask'), closePresets: $('closePresets'), presetList: $('presetList'),
   };
 
@@ -881,13 +907,13 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     saveJSON(CHATS_KEY, chats);
   }
 
-  // 会话列表预览：从一条消息抽「我: … / Ta: …」短句
+  // 会话列表预览：微信单聊最后一条直接显示内容，不加「我:/Ta:」前缀
   function previewOf(m) {
     if (!m) return '';
-    let t = String(m.content || '').trim().replace(/\s+/g, ' ');
+    const t = String(m.content || '').trim().replace(/\s+/g, ' ');
     const hasImg = m.images && m.images.length;
-    if (!t) return (m.role === 'user' ? '我: ' : 'Ta: ') + (hasImg ? '[图片]' : '');
-    return (m.role === 'user' ? '我: ' : 'Ta: ') + t.slice(0, 30);
+    if (!t) return hasImg ? '[图片]' : '';
+    return (hasImg ? '[图片] ' : '') + t.slice(0, 30);
   }
   // 把活跃人物的历史尾条抄进列表项（saveHistory 会自动跑）
   function stampActiveChat(source = history) {
@@ -999,7 +1025,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     chats.list.slice().sort((a, b) => (b.lastAt || b.t || 0) - (a.lastAt || a.t || 0)).forEach((c) => {
       const row = document.createElement('button');
       row.type = 'button';
-      row.className = 'chat-row' + (c.id === chats.active ? ' active' : '');
+      row.className = 'chat-row';
       const av = document.createElement('span');
       av.className = 'chat-av';
       if (c.avatar) av.style.backgroundImage = 'url(' + c.avatar + ')';
@@ -1029,7 +1055,30 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       x.type = 'button'; x.className = 'chat-x'; x.textContent = '✕'; x.title = '删除这个人物';
       x.addEventListener('click', (ev) => { ev.stopPropagation(); deleteChat(c.id); });
       row.appendChild(av); row.appendChild(main); row.appendChild(x);
-      row.addEventListener('click', () => switchChat(c.id));
+      // 微信列表不常驻删除钮：长按（或桌面右键/悬停）才露出 ✕
+      let holdTimer = null, holdFired = false;
+      row.addEventListener('touchstart', () => {
+        holdFired = false;
+        holdTimer = setTimeout(() => {
+          holdFired = true;
+          box.querySelectorAll('.chat-row.show-x').forEach((r) => { if (r !== row) r.classList.remove('show-x'); });
+          row.classList.add('show-x');
+          if (navigator.vibrate) navigator.vibrate(15);
+        }, 500);
+      }, { passive: true });
+      const cancelHold = () => { if (holdTimer) clearTimeout(holdTimer); };
+      row.addEventListener('touchend', cancelHold);
+      row.addEventListener('touchmove', cancelHold);
+      row.addEventListener('contextmenu', (ev) => {
+        ev.preventDefault();
+        row.classList.add('show-x');
+      });
+      row.addEventListener('click', () => {
+        const revealed = row.classList.contains('show-x');
+        box.querySelectorAll('.chat-row.show-x').forEach((r) => r.classList.remove('show-x'));
+        if (revealed || holdFired) { holdFired = false; return; }  // 首次点击只收起删除钮
+        switchChat(c.id);
+      });
       frag.appendChild(row);
     });
     box.appendChild(frag);
@@ -3160,7 +3209,6 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   });
   el.avatarClear.addEventListener('click', () => setAvatar(''));
   el.openChats.addEventListener('click', () => setChatOpen(false));   // ‹ 返回会话列表
-  el.newChat.addEventListener('click', newChat);
   el.newChatTop.addEventListener('click', newChat);
   el.closePresets.addEventListener('click', () => el.presetMask.classList.add('hidden'));
   el.presetMask.addEventListener('click', (e) => { if (e.target === el.presetMask) el.presetMask.classList.add('hidden'); });
