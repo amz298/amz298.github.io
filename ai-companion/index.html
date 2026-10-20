@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content" />
   <meta name="theme-color" content="#07c160" />
   <!-- iPhone 加到主屏幕后的全屏 App 模式与图标 -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -778,18 +778,27 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     presetMask: $('presetMask'), closePresets: $('closePresets'), presetList: $('presetList'),
   };
 
-  // iOS 键盘：视觉视口变化时同步高度（--vvh 供 .sheet 取用；mask 收到键盘高度），
-  // 避免弹层/输入栏被键盘挡住、布局跳动。dvh 已在 CSS 里兜现代 iOS，这里兜老版本与弹层。
+  // iOS 键盘：resizes-content（meta）在新系统上让 layout/dvh 随键盘直接收缩；
+  // 老系统走 visualViewport 兜底——把根高收到可视高、禁止页面被整体上推，
+  // 否则 fixed 弹层和输入栏会扎进键盘。键盘弹起时聊天/弹层滚到底，露出输入框。
   if (window.visualViewport) {
-    let lastVvH = 0;
+    let baseH = Math.round(window.visualViewport.height);   // 无键盘时的满高
     const onVv = () => {
-      const vh = Math.round(window.visualViewport.height);
-      if (vh === lastVvH) return;
-      lastVvH = vh;
+      const vv = window.visualViewport;
+      const vh = Math.round(vv.height);
+      if (vh >= baseH) baseH = vh;
+      const kbUp = vh < baseH - 80;                          // 高度骤降 = 键盘弹起
       document.documentElement.style.setProperty('--vvh', vh + 'px');
       document.documentElement.style.height = vh + 'px';
       document.body.style.height = vh + 'px';
+      // 阻止 iOS 把整个页面上推（内部 .chat/.sheet-body 自己滚，body 不需要滚）
+      document.documentElement.style.overflow = kbUp ? 'hidden' : '';
+      document.body.style.overflow = kbUp ? 'hidden' : '';
+      window.scrollTo(0, 0);
       document.querySelectorAll('.mask:not(.hidden)').forEach((m) => { m.style.height = vh + 'px'; });
+      if (kbUp && document.body.classList.contains('in-chat')) {
+        requestAnimationFrame(() => { el.chat.scrollTop = el.chat.scrollHeight; });
+      }
     };
     window.visualViewport.addEventListener('resize', onVv);
     window.visualViewport.addEventListener('scroll', onVv);
@@ -1031,10 +1040,19 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       setChatOpen(true);
       return;
     }
-    if (busy || paBusy) { flashToast('回复进行中，稍后再切换'); return; }
+    // 回复进行中也允许切换：先把当前人物的消息落盘，再让进行中的 turn「脱钩」
+    // （runTurn 闭包会自己检测到 chats.active 已变，回复到达后静默写回本会话+亮红点）
     syncChatSnapshot();
     saveHistory();
     try { saveMem(); } catch (e) {}
+    if (busy) {
+      busy = false;
+      activePlan = null;
+      activeTurnId = null;
+      el.send.disabled = false;
+      el.status.textContent = '';
+      el.status.className = 'status idle';
+    }
     const c = chats.list.find((x) => x.id === id);
     if (!c) return;
     chats.active = id;
@@ -1184,7 +1202,6 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   }
   // 从预设/空白/克隆 创建人物并进入设置
   function newChatFromPreset(src) {
-    if (busy || paBusy) { flashToast('回复进行中，稍后再新建人物'); return; }
     const id = 'c' + Date.now().toString(36);
     const base = src === 'clone' ? chatSnapshot()
       : src && typeof src === 'object' ? pickPresetFields(src)
@@ -2038,6 +2055,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   async function runTurn(turnId, isRetry, viaCloud) {
     const plan = buildCallPlan();
     const useCloud = !!(cfg.fnUrl || '').trim();
+    const ownerChatId = chats.active;        // 本轮回复的归属人物（回复到达时可能已被切走）
+    const isDetached = () => chats.active !== ownerChatId;
     // 发送前输入框有焦点才在回复后 refocus：用户点发送按钮阅读时，不强制弹键盘打断
     const hadInputFocus = document.activeElement === el.input;
     let retrying = false;
@@ -2081,10 +2100,18 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         // 前台真流式：模型边想边出字；思考段实时藏住，多气泡实时生长
         await callArk(plan.messages, (delta) => {
           acc += delta;
+          if (isDetached()) return;          // 已切到别人：只攒文本，不动当前界面
           const sp = splitPlan(acc);
           shown = sp.reply == null ? '' : sp.reply;
           syncBubbles();
         }, { model: plan.model });
+      }
+
+      // 用户已切到别的会话/新建了人物：回复只静落发起会话+亮红点，不碰当前界面
+      if (isDetached()) {
+        const parked = sanitizeReply(acc);
+        if (parked) parkAssistantTo(ownerChatId, turnId, parked, false);
+        return;
       }
 
       // 收尾：剥离思考段，丢掉空白行对应的气泡，保留的逐句定稿
@@ -2141,9 +2168,24 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         // 直连流被系统掐断：交给云函数重跑，回复走锁屏推送；云端模式本身就会推
         if (!viaCloud) void cloudRelay(plan, turnId);
         resumePending = true;
-        resumeChatId = chats.active;
-        el.status.textContent = '已切到后台，回复会推送到锁屏';
-        el.status.className = 'status';
+        resumeChatId = ownerChatId;
+        if (!isDetached()) {
+          el.status.textContent = '已切到后台，回复会推送到锁屏';
+          el.status.className = 'status';
+        }
+        return;
+      }
+
+      // 已切到别的会话才失败：不回滚消息（会误删别的会话的消息）、不弹错、不抢重试，
+      // 等切回发起会话或重开 App 时由 resumeTurn 续跑；长回复中断则把半成品落库
+      if (isDetached()) {
+        if (e.code === 'STREAM_INTERRUPTED') {
+          const partial = splitPlan(acc).reply;
+          if (partial && partial.trim()) parkAssistantTo(ownerChatId, turnId, partial.trim(), true);
+          return;
+        }
+        resumePending = true;
+        resumeChatId = ownerChatId;
         return;
       }
 
@@ -2188,6 +2230,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     } finally {
       bgDuringTurn = false;
       if (retrying) return;     // 交给递归的那一轮管理 busy / 发送按钮
+      if (isDetached()) return; // 全局 busy/UI 已属于新会话，这一轮只负责落库，别碰
       busy = false;
       activePlan = null;
       activeTurnId = null;
@@ -2920,15 +2963,27 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   // 她的消息直接冒出来（无 typing 气泡），逐条发，像真人连发
   async function pushProactive(lines) {
     if (!lines.length) return;
-    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+    const ownerId = chats.active;
+    const detached = () => chats.active !== ownerId;
+    if (!detached() && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
       try { new Notification(cfg.name || 'Ta', { body: lines[0], icon: 'icon.png' }); } catch (e) {}
     }
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      if (detached()) {
+        // 已切到别的会话：没冒完的消息静落原会话+亮红点（已冒出的在 switchChat 时随历史落盘）
+        const rest = lines.slice(i);
+        mutateOtherChatHistory(ownerId, (h) => {
+          for (const line of rest) h.push({ role: 'assistant', content: line, t: Date.now() });
+          return { save: true, bump: true };
+        });
+        return;
+      }
       const t = Date.now();
-      history.push({ role: 'assistant', content: line, t: t });
-      addBubble('ta', line, null, t);
+      history.push({ role: 'assistant', content: lines[i], t: t });
+      addBubble('ta', lines[i], null, t);
       await sleep(rand(450, 1100));
     }
+    if (detached()) return;
     saveHistory();
     noteUnread();
     markActive();
@@ -3308,6 +3363,20 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     });
     // 人物已删或提问已删：ack 丢弃；写入成功移除；存储失败保留队列重试
     return !!r.gone || !!r.discard || !!r.save;
+  }
+
+  // 回复进行中用户切走/新建了别的会话：回复到达后静默写回发起的那个会话并亮红点，
+  // 不碰当前界面。按 turnId 幂等（锁屏补单可能已抢先写入）。
+  function parkAssistantTo(chatId, turnId, text, incomplete) {
+    return mutateOtherChatHistory(chatId, (h) => {
+      if (h.some((m) => m.role === 'assistant' && m.turnId === turnId)) return {};
+      const at = h.findIndex((m) => m.role === 'user' && m.turnId === turnId);
+      if (at < 0) return { discard: true };
+      const m = { role: 'assistant', content: text, turnId: turnId, t: Date.now() };
+      if (incomplete) m.incomplete = true;
+      h.splice(at + 1, 0, m);
+      return { save: true, bump: true };
+    });
   }
 
   // 把角色快照与近期对话同步给云端（多人物：每个 chatId 一份快照，定时器遍历全员主动发言）。
