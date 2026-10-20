@@ -30,6 +30,7 @@
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
+@supports (height: 100dvh) { html, body { height: 100dvh; } }
 body {
   margin: 0;
   background: var(--chatbg);
@@ -45,6 +46,8 @@ body {
   display: flex; align-items: center; gap: 4px;
   padding: 10px;
   padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+  padding-left: calc(env(safe-area-inset-left, 0px) + 10px);
+  padding-right: calc(env(safe-area-inset-right, 0px) + 10px);
   background: var(--topbar);
   border-bottom: 1px solid var(--border);
 }
@@ -86,7 +89,6 @@ body.in-chat #listHeader { display: none; }
   display: flex;
   flex-direction: column;
   gap: 12px;
-  scroll-behavior: smooth;
   background: var(--chatbg);
 }
 .msg { max-width: 72%; display: flex; }
@@ -175,6 +177,8 @@ body.in-chat #listHeader { display: none; }
 .composer {
   padding: 8px 10px;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  padding-left: calc(env(safe-area-inset-left, 0px) + 10px);
+  padding-right: calc(env(safe-area-inset-right, 0px) + 10px);
   background: #f7f7f7;           /* 微信输入栏浅灰底 */
   border-top: 1px solid #e5e5e5;
 }
@@ -242,7 +246,7 @@ body.in-chat #listHeader { display: none; }
 .mask.hidden { display: none; }
 .sheet {
   width: 100%;
-  max-height: 92vh;
+  max-height: min(92vh, calc(var(--vvh, 100vh) - 24px));
   background: #f7f7f7;
   border-radius: 16px 16px 0 0;
   display: flex; flex-direction: column;
@@ -425,7 +429,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     </div>
     <!-- 聊天头（进入某个聊天时显示） -->
     <div id="chatHeader" class="topbar-row">
-      <span class="nav back" id="openChats" title="返回列表">‹</span>
+      <button type="button" class="nav back" id="openChats" title="返回列表">‹</button>
       <div class="meta">
         <div class="name" id="personaName">还没设人物</div>
         <div class="status" id="status">未连接</div>
@@ -449,7 +453,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       <div class="input-wrap">
         <textarea id="input" rows="1" enterkeyhint="send"></textarea>
       </div>
-      <button id="send" type="button" class="send-btn" onclick="if(window.__tapSend)window.__tapSend()">发送</button>
+      <button id="send" type="button" class="send-btn">发送</button>
     </div>
   </form>
 
@@ -689,6 +693,17 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     pushSubscribed: false,        // 本机是否已订阅锁屏推送
   };
 
+  // 云函数鉴权：所有云端请求带共享密钥头。这个值要和腾讯云 SCF 的 APP_TOKEN 环境变量一致。
+  // 注意：token 在前端代码里等于公开，只能挡住扫描器/误用，防不了定向攻击者（纯前端 App 的固有局限）。
+  const APP_TOKEN = 'fdba3835de2e03e50c135d0b3ce74410945bf4d57131896f0737e657da5d5914';
+  function cloudFetch(path, opts) {
+    const fn = (cfg.fnUrl || '').trim().replace(/\/*$/, '');
+    if (!fn) return null;
+    opts = opts || {};
+    opts.headers = Object.assign({ 'X-App-Token': APP_TOKEN }, opts.headers || {});
+    return fetch(fn + path, opts);
+  }
+
   // 预设人物库：＋ 新建人物 时可选；每个带「日常习惯」（作息/饭点等，主动发消息会贴合）
   const PRESETS = [
     {
@@ -762,6 +777,24 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     chatList: $('chatList'),
     presetMask: $('presetMask'), closePresets: $('closePresets'), presetList: $('presetList'),
   };
+
+  // iOS 键盘：视觉视口变化时同步高度（--vvh 供 .sheet 取用；mask 收到键盘高度），
+  // 避免弹层/输入栏被键盘挡住、布局跳动。dvh 已在 CSS 里兜现代 iOS，这里兜老版本与弹层。
+  if (window.visualViewport) {
+    let lastVvH = 0;
+    const onVv = () => {
+      const vh = Math.round(window.visualViewport.height);
+      if (vh === lastVvH) return;
+      lastVvH = vh;
+      document.documentElement.style.setProperty('--vvh', vh + 'px');
+      document.documentElement.style.height = vh + 'px';
+      document.body.style.height = vh + 'px';
+      document.querySelectorAll('.mask:not(.hidden)').forEach((m) => { m.style.height = vh + 'px'; });
+    };
+    window.visualViewport.addEventListener('resize', onVv);
+    window.visualViewport.addEventListener('scroll', onVv);
+    onVv();
+  }
 
   let cfg = loadJSON(CFG_KEY, DEFAULTS);
   let history = loadJSON(HIST_KEY, []);   // [{role, content, images?:[dataUri], t}]
@@ -912,7 +945,10 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     return o;
   }
   function applyChatSnapshot(s) {     // 把列表项的人物字段写进 cfg
-    for (const k of PERS_FIELDS) cfg[k] = s[k];
+    for (const k of PERS_FIELDS) {
+      const v = s ? s[k] : undefined;
+      cfg[k] = (v === undefined || v === null) ? '' : v;
+    }
   }
   function syncChatSnapshot() {       // cfg 变化后同步回活跃列表项
     if (!chats || !chats.list) return;
@@ -986,15 +1022,28 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   }
 
   function switchChat(id) {
-    if (id === chats.active) { setChatOpen(true); return; }   // 点活跃人物 = 进聊天
-    if (busy) { flashToast('回复进行中，稍后再切换'); return; }
+    if (id === chats.active) {                       // 点活跃人物 = 进聊天
+      const cur = chats.list.find((x) => x.id === id);
+      if (cur && cur.unread) {                        // 快路径也要清未读红点
+        cur.unread = 0;
+        saveJSON(CHATS_KEY, chats);
+      }
+      setChatOpen(true);
+      return;
+    }
+    if (busy || paBusy) { flashToast('回复进行中，稍后再切换'); return; }
     syncChatSnapshot();
     saveHistory();
     try { saveMem(); } catch (e) {}
     const c = chats.list.find((x) => x.id === id);
     if (!c) return;
     chats.active = id;
-    HIST_KEY = c.histKey; MEM_KEY = c.memKey;
+    HIST_KEY = c.histKey || ('ai_companion_hist_' + c.id);   // 旧版数据兜底
+    MEM_KEY = c.memKey || ('ai_companion_mem_' + c.id);
+    if (c.histKey !== HIST_KEY || c.memKey !== MEM_KEY) {
+      c.histKey = HIST_KEY; c.memKey = MEM_KEY;
+      saveJSON(CHATS_KEY, chats);
+    }
     applyChatSnapshot(c);
     saveJSON(CFG_KEY, cfg);
     c.unread = 0;                        // 进了聊天就视为已读
@@ -1005,13 +1054,24 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     refresh();
     renderHistory();
     setChatOpen(true);
+    // 云端主动消息是单例快照：切人物就把当前人物同步上去，避免定时器还拿上一个人物的快照发言（串角色）
+    void syncState();
+    // 被后台打断的恢复只属于发起的那个人物，切到它时再续
+    if (resumePending && resumeChatId === id && document.visibilityState === 'visible') {
+      void resumeTurn();
+    }
   }
 
   function isChatOpen() { return document.body.classList.contains('in-chat'); }
   // 首页会话列表 / 聊天屏 互相切换；回列表时顺手重绘（刷新最后一句、未读数）
   function setChatOpen(open) {
     document.body.classList.toggle('in-chat', !!open);
-    if (!open) renderChatList();
+    if (!open) { renderChatList(); return; }
+    // 显示后再滚：display:none 状态下 scrollHeight 为 0，先渲染后显示会停在最顶上
+    requestAnimationFrame(() => {
+      el.chat.scrollTop = el.chat.scrollHeight;
+      requestAnimationFrame(() => { el.chat.scrollTop = el.chat.scrollHeight; });
+    });
   }
   // 有消息进来但人不在聊天屏 → 记未读，列表上亮红点
   function noteUnread() {
@@ -1037,10 +1097,15 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     el.listStatus.textContent = chats.list.length + ' 个人物';
     box.innerHTML = '';
     const frag = document.createDocumentFragment();
+    const collapseAllX = (except) => {
+      box.querySelectorAll('.chat-row.show-x').forEach((r) => { if (r !== except) r.classList.remove('show-x'); });
+    };
     chats.list.slice().sort((a, b) => (b.lastAt || b.t || 0) - (a.lastAt || a.t || 0)).forEach((c) => {
-      const row = document.createElement('button');
-      row.type = 'button';
+      // 用 div 而非 button：里面要嵌删除按钮（button 里不能套 button）
+      const row = document.createElement('div');
       row.className = 'chat-row';
+      row.setAttribute('role', 'button');
+      row.tabIndex = 0;
       const av = document.createElement('span');
       av.className = 'chat-av';
       if (c.avatar) av.style.backgroundImage = 'url(' + c.avatar + ')';
@@ -1070,29 +1135,43 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       x.type = 'button'; x.className = 'chat-x'; x.textContent = '✕'; x.title = '删除这个人物';
       x.addEventListener('click', (ev) => { ev.stopPropagation(); deleteChat(c.id); });
       row.appendChild(av); row.appendChild(main); row.appendChild(x);
-      // 微信列表不常驻删除钮：长按（或桌面右键/悬停）才露出 ✕
+      // 微信列表不常驻删除钮：长按 / 右键 / 桌面悬停才露出 ✕
       let holdTimer = null, holdFired = false;
+      const fireHold = () => {
+        holdFired = true;
+        collapseAllX(row);
+        row.classList.add('show-x');
+        if (navigator.vibrate) navigator.vibrate(15);
+      };
       row.addEventListener('touchstart', () => {
         holdFired = false;
-        holdTimer = setTimeout(() => {
-          holdFired = true;
-          box.querySelectorAll('.chat-row.show-x').forEach((r) => { if (r !== row) r.classList.remove('show-x'); });
-          row.classList.add('show-x');
-          if (navigator.vibrate) navigator.vibrate(15);
-        }, 500);
+        holdTimer = setTimeout(fireHold, 500);
       }, { passive: true });
-      const cancelHold = () => { if (holdTimer) clearTimeout(holdTimer); };
+      const cancelHold = () => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } };
       row.addEventListener('touchend', cancelHold);
       row.addEventListener('touchmove', cancelHold);
+      row.addEventListener('touchcancel', cancelHold);
       row.addEventListener('contextmenu', (ev) => {
         ev.preventDefault();
+        collapseAllX(row);
         row.classList.add('show-x');
       });
       row.addEventListener('click', () => {
-        const revealed = row.classList.contains('show-x');
-        box.querySelectorAll('.chat-row.show-x').forEach((r) => r.classList.remove('show-x'));
-        if (revealed || holdFired) { holdFired = false; return; }  // 首次点击只收起删除钮
+        if (holdFired) { holdFired = false; return; }   // 长按抬手的 click：保留 ✕，不进会话
+        if (row.classList.contains('show-x')) {          // 露出状态下的普通点击：只收起
+          row.classList.remove('show-x');
+          return;
+        }
+        collapseAllX(null);
         switchChat(c.id);
+      });
+      // 键盘可达
+      row.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          collapseAllX(null);
+          switchChat(c.id);
+        }
       });
       frag.appendChild(row);
     });
@@ -1105,6 +1184,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   }
   // 从预设/空白/克隆 创建人物并进入设置
   function newChatFromPreset(src) {
+    if (busy || paBusy) { flashToast('回复进行中，稍后再新建人物'); return; }
     const id = 'c' + Date.now().toString(36);
     const base = src === 'clone' ? chatSnapshot()
       : src && typeof src === 'object' ? pickPresetFields(src)
@@ -1115,8 +1195,9 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       memKey: 'ai_companion_mem_' + id,
       t: Date.now(),
     }, base);
+    for (const k of PERS_FIELDS) if (c[k] === undefined || c[k] === null) c[k] = '';
     if (!c.name) c.name = '新人物';
-    if (c.proactive == null) c.proactive = true;
+    if (typeof c.proactive !== 'boolean') c.proactive = true;
     chats.list.push(c);
     saveJSON(CHATS_KEY, chats);
     el.presetMask.classList.add('hidden');
@@ -1155,18 +1236,21 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
 
   function deleteChat(id) {
     if (chats.list.length <= 1) { flashToast('至少保留一个人物'); return; }
+    if (chats.active === id && (busy || paBusy)) { flashToast('回复进行中，稍后再删'); return; }
     const idx = chats.list.findIndex((x) => x.id === id);
     if (idx < 0) return;
     const c = chats.list[idx];
     if (!confirm('删除「' + (c.name || '未命名') + '」？它的聊天记录和长期记忆会一并删除。')) return;
-    try { localStorage.removeItem(c.histKey); } catch (e) {}
-    try { localStorage.removeItem(c.memKey); } catch (e) {}
+    try { localStorage.removeItem(c.histKey || ('ai_companion_hist_' + c.id)); } catch (e) {}
+    try { localStorage.removeItem(c.memKey || ('ai_companion_mem_' + c.id)); } catch (e) {}
+    if (resumePending && resumeChatId === id) { resumePending = false; resumeChatId = null; }
     const wasActive = chats.active === id;
     chats.list.splice(idx, 1);
     if (wasActive) {
       const next = chats.list[0];
       chats.active = next.id;
-      HIST_KEY = next.histKey; MEM_KEY = next.memKey;
+      HIST_KEY = next.histKey || ('ai_companion_hist_' + next.id);
+      MEM_KEY = next.memKey || ('ai_companion_mem_' + next.id);
       applyChatSnapshot(next);
       saveJSON(CFG_KEY, cfg);
       history = loadJSON(HIST_KEY, []);
@@ -1177,6 +1261,35 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     }
     saveJSON(CHATS_KEY, chats);
     setChatOpen(false);   // 删除在列表里进行，停在列表
+    // best-effort 联动云端：从 roster 移除该人物，删掉其快照/节奏/未补单消息（失败不影响本地）
+    void syncState({ deletedIds: [id] });
+  }
+
+  // 往【非活跃】人物的历史里写云端补单消息（不切 UI、不播动画），只更新它的列表行预览/未读。
+  // mutator(h) 返回 {save:bool 是否落盘, bump:bool 是否未读+1}，返回 null/{} 表示无操作。
+  // 人物已删除时返回 {gone:true}（调用方应 ack 丢弃这条云端消息）。
+  function mutateOtherChatHistory(chatId, mutator) {
+    const c = chats.list.find((x) => x.id === chatId);
+    if (!c) return { gone: true };
+    const hk = c.histKey || ('ai_companion_hist_' + c.id);
+    let h = [];
+    try { h = JSON.parse(localStorage.getItem(hk) || '[]'); } catch (e) { h = []; }
+    if (!Array.isArray(h)) h = [];
+    const r = mutator(h) || {};
+    if (r.save) {
+      try { localStorage.setItem(hk, JSON.stringify(h)); } catch (e) { return { error: true }; }
+      const last = h[h.length - 1];
+      if (last) {
+        c.lastText = previewOf(last);
+        c.lastAt = Number(last.t) || Date.now();
+      }
+    }
+    if (r.bump) c.unread = (c.unread || 0) + 1;
+    if (r.save || r.bump) {
+      saveJSON(CHATS_KEY, chats);
+      if (!isChatOpen()) renderChatList();   // 在聊天页不重绘列表，返回时 setChatOpen(false) 会刷
+    }
+    return r;
   }
 
   // ---------- 图片压缩 ----------
@@ -1616,7 +1729,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     '12. 直接输出要发给对方的话。严禁输出思考过程、思路、分析、计划、提纲、"### 回复"之类的标题或任何 Markdown 标记——你在心里想，不要写出来。';
 
   function buildSystem() {
-    const persona = cfg.persona.trim();
+    const persona = String(cfg.persona || '').trim();
     const notes = (cfg.styleNotes || '').trim();
     const habits = (cfg.habits || '').trim();
     const memory = cfg.memory.trim();
@@ -1851,17 +1964,17 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
 
   // 云端 /chat：返回完整回复（切后台后由云函数继续跑，回复经 Web Push 送达）
   async function remoteChat(plan, turnId) {
-    const base = (cfg.fnUrl || '').trim().replace(/\/*$/, '');
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 90000);
     try {
-      const res = await fetch(base + '/chat', {
+      const res = await cloudFetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: plan.messages,
           model: plan.model,
           turnId: turnId,
+          chatId: chats.active,
           name: cfg.name || '',
         }),
         signal: ctrl.signal,
@@ -1892,18 +2005,17 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
 
   // 切后台瞬间把本轮交给云函数：云端重跑并推送回复到锁屏（每个 turnId 只交一次）
   async function cloudRelay(plan, turnId) {
-    const base = (cfg.fnUrl || '').trim().replace(/\/*$/, '');
-    if (!base) return false;
+    if (!(cfg.fnUrl || '').trim()) return false;
     if (cloudCompleted.has(turnId)) return true;
     if (cloudFlights.has(turnId)) return cloudFlights.get(turnId);
     const flight = (async () => {
       try {
-        const res = await fetch(base + '/relay', {
+        const res = await cloudFetch('/relay', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: plan.messages, model: plan.model,
-            turnId: turnId, name: cfg.name || '',
+            turnId: turnId, chatId: chats.active, name: cfg.name || '',
           }),
         });
         if (!res.ok) throw new Error('云端接管 HTTP ' + res.status);
@@ -1926,6 +2038,8 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   async function runTurn(turnId, isRetry, viaCloud) {
     const plan = buildCallPlan();
     const useCloud = !!(cfg.fnUrl || '').trim();
+    // 发送前输入框有焦点才在回复后 refocus：用户点发送按钮阅读时，不强制弹键盘打断
+    const hadInputFocus = document.activeElement === el.input;
     let retrying = false;
     activePlan = plan;
     activeTurnId = turnId;
@@ -2027,6 +2141,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         // 直连流被系统掐断：交给云函数重跑，回复走锁屏推送；云端模式本身就会推
         if (!viaCloud) void cloudRelay(plan, turnId);
         resumePending = true;
+        resumeChatId = chats.active;
         el.status.textContent = '已切到后台，回复会推送到锁屏';
         el.status.className = 'status';
         return;
@@ -2082,15 +2197,16 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         hiddenAt = 0;
         void resumeTurn();
       }
-      if (!document.hidden) el.input.focus();
+      if (!document.hidden && hadInputFocus) el.input.focus();
     }
   }
 
   // 回前台 / 重开 App 时，把"已发出但没收到回复"的最后一条用户消息重新跑一轮
   async function resumeTurn() {
     if (busy || !configured() || !resumePending) return;
+    if (resumeChatId !== chats.active) return;   // 恢复只属于发起人物，切错人物不动
     const last = history[history.length - 1];
-    if (!last || last.role !== 'user') { resumePending = false; return; }
+    if (!last || last.role !== 'user') { resumePending = false; resumeChatId = null; return; }
     if (document.visibilityState !== 'visible') return;   // 还在后台就再等等
     resumePending = false;
     await sleep((cfg.fnUrl || '').trim() ? 3000 : 800);  // 云端模式：先等锁屏推送补单
@@ -2248,13 +2364,15 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'ai-companion-chat-' + new Date().toISOString().slice(0, 10) + '.json';
+      const safeName = (cfg.name || '角色').replace(/[\\/:*?"<>|\s]+/g, '_');
+      a.download = 'ai-companion-' + safeName + '-' + new Date().toISOString().slice(0, 10) + '.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
       out.className = 'conn-result ok';
-      out.textContent = '已生成备份（' + history.length + ' 条聊天、' + mem.items.length + ' 条记忆）。文件含私人内容，请妥善保存。';
+      out.textContent = '已生成当前角色「' + (cfg.name || '') + '」的备份（' + history.length + ' 条聊天、' + mem.items.length +
+        ' 条记忆）。只含当前角色，其他角色请逐个导出；文件含私人内容，请妥善保存。';
     } catch (e) {
       out.className = 'conn-result err';
       out.textContent = '导出失败：' + (e.message || e);
@@ -2497,15 +2615,15 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   }
 
   // ================= 长期记忆（自动整理 + 手动管理） =================
-  function historyTextSince(upto) {
+  function historyTextSince(upto, src, whoName) {
     const lines = [];
-    for (const m of history.slice(upto)) {
+    for (const m of (src || history).slice(upto)) {
       if (!m || typeof m !== 'object') continue;
       const text = typeof m.content === 'string' ? m.content.trim() : '';
       if (m.role === 'user') {
         lines.push('我: ' + (text || ((m.images && m.images.length) ? '[图片]' : '')));
       } else if (m.role === 'assistant') {
-        lines.push((cfg.name || 'Ta') + ': ' + text);
+        lines.push((whoName || cfg.name || 'Ta') + ': ' + text);
       }
     }
     let joined = lines.join('\n');
@@ -2518,9 +2636,16 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   async function consolidateMemory(manual) {
     if (memBusy) return { ok: false, error: 'busy' };
     memBusy = true;
+    // 整理可能跑 90 秒：先快照发起人物，await 期间用户切人物也不能串写
+    const ownerId = chats.active;
+    const ownerListItem = chats.list.find((x) => x.id === ownerId);
+    const ownerMemKey = ownerListItem ? (ownerListItem.memKey || MEM_KEY) : MEM_KEY;
+    const ownerMem = mem;
+    const ownerHist = history;
+    const ownerName = cfg.name;
     try {
-      if (mem.upto > history.length) mem.upto = history.length;
-      const newChat = historyTextSince(mem.upto) || '（暂无新对话，只做合并与清理）';
+      if (ownerMem.upto > ownerHist.length) ownerMem.upto = ownerHist.length;
+      const newChat = historyTextSince(ownerMem.upto, ownerHist, ownerName) || '（暂无新对话，只做合并与清理）';
 
       const system =
         '你是长期记忆整理引擎。读取「现有记忆条目」和「新增聊天记录」，对记忆做新增、更新、合并、删除，输出整理后的完整条目集合。' +
@@ -2532,9 +2657,9 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         '- event：已发生或确定将发生的事件、近况（尽量带时间）\n' +
         '- relation：用户提到的人际关系及对其态度\n' +
         '- goal：用户的目标、计划、待办、心愿\n' +
-        '- bond：用户与「' + cfg.name + '」之间独有的共同经历、梗、约定、默契，必须是双方互动中产生的\n\n' +
+        '- bond：用户与「' + ownerName + '」之间独有的共同经历、梗、约定、默契，必须是双方互动中产生的\n\n' +
         '【现有记忆条目】（JSON；保留 id 表示沿用该条目）\n' +
-        JSON.stringify(mem.items.map((it) => ({ id: it.id, cat: it.cat, text: it.text }))) + '\n\n' +
+        JSON.stringify(ownerMem.items.map((it) => ({ id: it.id, cat: it.cat, text: it.text }))) + '\n\n' +
         '【新增聊天记录】（「我:」是用户，「Ta:」是陪伴角色；[图片] 表示当时发了图片，不许猜测图片内容）\n' +
         newChat + '\n\n' +
         '【整理规则】\n' +
@@ -2563,7 +2688,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       if (!obj || typeof obj !== 'object' || !Array.isArray(obj.items)) throw new Error('整理结果无法识别');
 
       const oldById = {};
-      mem.items.forEach((it) => { oldById[it.id] = it; });
+      ownerMem.items.forEach((it) => { oldById[it.id] = it; });
       const seenText = {};
       const newItems = [];
       for (const raw of obj.items) {
@@ -2583,12 +2708,20 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       }
 
       // fail-closed：自动路径下模型若清空全部条目，保留旧记忆
-      if (newItems.length === 0 && mem.items.length > 0 && !manual) throw new Error('empty');
+      if (newItems.length === 0 && ownerMem.items.length > 0 && !manual) throw new Error('empty');
 
-      mem.items = newItems;
-      mem.upto = history.length;
-      mem.lastRun = Date.now();
-      if (!saveMem()) return { ok: false, error: '本机存储已满，先删掉一些旧对话或记忆' };
+      ownerMem.items = newItems;
+      ownerMem.upto = ownerHist.length;
+      ownerMem.lastRun = Date.now();
+      if (chats.active === ownerId) {
+        // 没切走：全局变量就是 owner 本身，走正常保存
+        mem = ownerMem;
+        if (!saveMem()) return { ok: false, error: '本机存储已满，先删掉一些旧对话或记忆' };
+      } else {
+        // 已切到别人：直接写回原人物的键，绝不碰当前全局
+        try { saveJSON(ownerMemKey, ownerMem); }
+        catch (e) { return { ok: false, error: '记忆保存失败：' + (e.message || e) }; }
+      }
       return { ok: true, total: newItems.length };
     } catch (e) {
       return { ok: false, error: e.message || String(e) };
@@ -2711,6 +2844,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   let paBusy = false;
   let hiddenAt = 0;             // 最近一次切后台的时刻
   let resumePending = false;    // 用户消息已发、回复被后台打断，待回前台续
+  let resumeChatId = null;      // 被打断的那个人物 id，恢复只认它
   let bgDuringTurn = false;     // 本轮回复期间是否切过后台
   const cloudFlights = new Map(); // 正在接管的请求，避免同一轮重复提交
   const cloudCompleted = new Set(); // 已接管的最近轮次
@@ -2989,8 +3123,27 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   let paRevealVersion = 0;
   const paWait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  // 主动消息分发：属于其他人物的写进对方历史并亮红点；属于当前人物的走下面的气泡动画
   function applyProactive(p) {
     if (!p || !p.id || !p.text) return false;
+    const chatId = p.chatId || chats.active;   // 旧云端条目可能没有 chatId，归当前人物
+    if (chatId !== chats.active) return applyProactiveOther(p, chatId);
+    return applyProactiveActive(p);
+  }
+
+  // 其他人物的主动消息：不切屏、不播动画，静默落库 + 列表亮未读；无论新旧都要 ack
+  function applyProactiveOther(p, chatId) {
+    pendingAck.push(p.id);
+    scheduleAck();
+    const r = mutateOtherChatHistory(chatId, (h) => {
+      if (h.some((m) => m.paId === p.id)) return {};          // 已补过：不重复写
+      h.push({ role: 'assistant', content: p.fullText || p.text, paId: p.id, t: p.t || Date.now() });
+      return { save: true, bump: true };
+    });
+    return !!r.gone || !!r.save;       // 人物已删（ack 丢弃）或写入成功 → 从队列移除；存储失败则保留重试
+  }
+
+  function applyProactiveActive(p) {
     if (history.some((m) => m.paId === p.id)) {
       pendingAck.push(p.id);
       scheduleAck();
@@ -3004,6 +3157,10 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     pendingAck.push(p.id);
     scheduleAck();
     refresh();
+    if (history.length === 1) {          // 空对话里冒出第一条：去掉「还没有对话」空提示
+      const h0 = el.chat.querySelector('.hint-block');
+      if (h0) h0.remove();
+    }
     markActive();              // 她刚主动过，前台计时器重置，不重复主动
     void maybeAutoMemory();
 
@@ -3036,7 +3193,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     const ids = pendingAck.splice(0);
     if (!fn || !ids.length) return;
     try {
-      const res = await fetch(fn.replace(/\/*$/, '') + '/ack', {
+      const res = await cloudFetch('/ack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids }),
@@ -3083,12 +3240,25 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     }
   }
 
-  function applyQueuedPush(p) {
+  function applyQueuedPush(p, opts) {
     if (!p || !p.type) return true;
     if (busy) return false;
     if (p.type === 'proactive') return applyProactive(p);
     if (p.type !== 'reply' || !p.text) return true;
+    const chatId = p.chatId || chats.active;   // 旧云端条目可能没有 chatId，归当前人物
+    if (chatId !== chats.active) return applyReplyOther(p, chatId, opts);
     if (p.turnId && history.some((m) => m.role === 'assistant' && m.turnId === p.turnId)) {
+      // 云端 outbox 补单的是完整回复：之前推送/保存的若是截断版，这里升级成完整版
+      if (opts && opts.full) {
+        const idx = history.findIndex((m) => m.role === 'assistant' && m.turnId === p.turnId);
+        if (idx >= 0 && history[idx].content !== p.text) {
+          history[idx].content = p.text;
+          if (history[idx].incomplete) delete history[idx].incomplete;
+          if (!saveHistory()) return false;
+          renderHistory();
+          noteUnread();
+        }
+      }
       // An in-memory reply is not enough: a failed localStorage write must
       // leave the push available for recovery after the user frees space.
       try {
@@ -3109,14 +3279,40 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     noteUnread();
     renderHistory();
     resumePending = false;
+    resumeChatId = null;
     refresh();
     markActive();
     void maybeAutoMemory();
     return true;
   }
 
-  // 把角色快照与近期对话同步给云端（定时主动发言的素材）
-  async function syncState() {
+  // 回复归属【其他人物】（如切后台期间又切了人物）：写进对方历史、亮未读，不动当前界面
+  function applyReplyOther(p, chatId, opts) {
+    const r = mutateOtherChatHistory(chatId, (h) => {
+      const exIdx = p.turnId ? h.findIndex((m) => m.role === 'assistant' && m.turnId === p.turnId) : -1;
+      if (exIdx >= 0) {
+        // outbox 完整版升级之前的截断推送：要落盘但不重复计未读
+        if (opts && opts.full && h[exIdx].content !== p.text) {
+          h[exIdx].content = p.text;
+          delete h[exIdx].incomplete;
+          return { save: true, bump: false };
+        }
+        return {};
+      }
+      const at = p.turnId
+        ? h.findIndex((m) => m.role === 'user' && m.turnId === p.turnId)
+        : h.length - 1;
+      if (at < 0 || !h[at] || h[at].role !== 'user') return { discard: true };  // 提问已删，无家可归
+      h.splice(at + 1, 0, { role: 'assistant', content: p.text, turnId: p.turnId || h[at].turnId, t: Date.now() });
+      return { save: true, bump: true };
+    });
+    // 人物已删或提问已删：ack 丢弃；写入成功移除；存储失败保留队列重试
+    return !!r.gone || !!r.discard || !!r.save;
+  }
+
+  // 把角色快照与近期对话同步给云端（多人物：每个 chatId 一份快照，定时器遍历全员主动发言）。
+  // extra.deletedIds：删除人物时联动清掉云端该人物的快照/节奏/未补单消息。
+  async function syncState(extra) {
     const fn = (cfg.fnUrl || '').trim();
     if (!fn) return;
     const recentText = history.slice(-14).map((m) => {
@@ -3124,17 +3320,21 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
       if (m.role === 'assistant') return (cfg.name || 'Ta') + ': ' + (m.content || '');
       return '';
     }).filter(Boolean).join('\n');
+    const body = {
+      chatId: chats.active,
+      state: {
+        name: cfg.name, persona: cfg.persona, styleNotes: cfg.styleNotes,
+        habits: cfg.habits, recentText, memBlock: buildMemoryBlock(),
+        model: cfg.model, proactive: cfg.proactive !== false,
+      },
+      roster: chats.list.map((c) => ({ id: c.id, name: c.name || '' })),
+    };
+    Object.assign(body, extra || {});
     try {
-      await fetch(fn.replace(/\/*$/, '') + '/sync', {
+      await cloudFetch('/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          state: {
-            name: cfg.name, persona: cfg.persona, styleNotes: cfg.styleNotes,
-            habits: cfg.habits, recentText, memBlock: buildMemoryBlock(),
-            proactive: cfg.proactive !== false,
-          },
-        }),
+        body: JSON.stringify(body),
       });
     } catch (e) {}
   }
@@ -3144,9 +3344,18 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     const fn = (cfg.fnUrl || '').trim();
     if (!fn) return;
     try {
-      const res = await fetch(fn.replace(/\/*$/, '') + '/pending', { cache: 'no-store' });
+      const res = await cloudFetch('/pending', { cache: 'no-store' });
+      if (!res) return;
       const j = await res.json();
-      if (Array.isArray(j.items)) j.items.forEach(applyProactive);
+      if (Array.isArray(j.items)) j.items.forEach((p) => {
+        if (p && p.type === 'reply') {
+          // 云端补单的完整回复：长回复推送被截断时，这里用完整版升级
+          applyQueuedPush(p, { full: true });
+          if (p.id) { pendingAck.push(p.id); scheduleAck(); }
+        } else {
+          applyProactive(p);
+        }
+      });
     } catch (e) {}
   }
 
@@ -3194,7 +3403,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
         });
       }
       out.textContent = '正在登记到云函数…';
-      const res = await fetch(fn.replace(/\/*$/, '') + '/push/subscribe', {
+      const res = await cloudFetch('/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscription: sub.toJSON() }),
@@ -3220,7 +3429,6 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
     lastSend = now;
     send();
   }
-  window.__tapSend = triggerSend;
   el.send.addEventListener('click', (e) => { e.preventDefault(); triggerSend(); });
   el.chat.addEventListener('click', (e) => {
     const btn = e.target.closest && e.target.closest('button[data-continue-turn]');
@@ -3421,6 +3629,7 @@ details.mem-group { background: #fff; border: 1px solid #e6e6e6; border-radius: 
   // 上次在后台时直接划掉了 App：重开后最后一条是用户消息，自动补回复
   if (history.length && history[history.length - 1].role === 'user' && configured()) {
     resumePending = true;
+    resumeChatId = chats.active;
     setTimeout(() => { void resumeTurn(); }, 1000);
   }
 
