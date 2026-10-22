@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="混箱配货规划器：根据 SKU 尺寸、重量、数量和候选外箱，生成逐箱配货方案并核算体积重。" />
+  <title>混箱配货规划器</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-icon">▦</span><div><strong>BOXWISE</strong><small>混箱配货规划器</small></div></div>
+      <div class="nav-label">工作台</div>
+      <a id="workspace-link" class="nav-link active" href="#workspace"><span>▧</span> 配箱工作台</a>
+      <a id="results-link" class="nav-link" href="#results"><span>▤</span> 装箱方案</a>
+      <div class="sidebar-bottom"><div class="status-dot"></div><span>数据仅保存在当前浏览器</span></div>
+    </aside>
+    <main id="workspace" class="main">
+      <header class="topbar"><div class="breadcrumb">工作台 <span>/</span> 配箱计算</div><div class="top-right"><span class="top-pill">FBA</span><span class="avatar">BX</span></div></header>
+      <div class="content">
+        <section class="hero">
+          <div><div class="eyebrow">PACKING OPTIMIZATION</div><h1>让每一箱，装得更合理。</h1><p>录入产品与可选外箱，自动生成混箱方案，并逐箱核对实重与体积重。</p><button type="button" id="hero-3d-link" class="hero-3d-link">查看 3D 装箱与动画 →</button></div>
+          <div class="hero-art" aria-hidden="true"><div class="art-grid"></div><div class="art-box box-back"></div><div class="art-box box-front"><span>BOX 01</span><i></i><i></i><i></i></div><div class="art-check">✓</div></div>
+        </section>
+        <div class="steps"><span class="step active"><b>01</b> 产品清单</span><span class="line"></span><span class="step active"><b>02</b> 箱规设置</span><span class="line"></span><span class="step"><b>03</b> 生成方案</span></div>
+        <section class="panel" aria-labelledby="products-heading">
+          <div class="panel-head"><div><div class="section-kicker">STEP 01</div><h2 id="products-heading">产品清单 <span id="product-count" class="count">0 SKU</span></h2><p>填写单件包装尺寸、重量和数量；在“规则”中设置方向、易碎、承重与校准。</p></div><div class="head-actions"><input id="import-file" type="file" accept=".xlsx,.csv,.tsv" hidden><button type="button" id="import-products" class="button ghost">导入 Excel / CSV</button><button type="button" id="paste-products" class="button ghost">批量粘贴</button><button type="button" id="add-product" class="button outline">＋ 添加产品</button></div></div>
+          <div class="table-scroll"><table class="input-table"><thead><tr><th>SKU / 产品名称</th><th>长 <small>cm</small></th><th>宽 <small>cm</small></th><th>高 <small>cm</small></th><th>单件重 <small>kg</small></th><th>数量 <small>件</small></th><th>装箱体积 <small>%</small></th><th>规则</th><th></th></tr></thead><tbody id="products-body"></tbody></table></div>
+          <div class="table-foot"><span>固定形状填 100%；可压缩产品按实测装箱体积填写。低于 100% 时采用软货填隙估算，需试装复核。</span><strong id="total-units">合计 0 件</strong></div>
+        </section>
+        <section class="panel" aria-labelledby="boxes-heading">
+          <div class="panel-head"><div><div class="section-kicker">STEP 02</div><h2 id="boxes-heading">可选外箱 <span id="box-count" class="count">0 种</span></h2><p>外尺寸用于计算体积重，内尺寸用于判断能否装入。</p></div><div class="head-actions"><button type="button" id="save-box-library" class="button ghost">保存箱规库</button><button type="button" id="load-box-library" class="button ghost">载入箱规库</button><button type="button" id="add-box" class="button outline">＋ 添加箱规</button></div></div>
+          <div class="table-scroll"><table class="input-table boxes-table"><thead><tr><th>箱规名称</th><th>外长 <small>cm</small></th><th>外宽 <small>cm</small></th><th>外高 <small>cm</small></th><th>内长 <small>cm</small></th><th>内宽 <small>cm</small></th><th>内高 <small>cm</small></th><th>空箱重 <small>kg</small></th><th>限重 <small>kg</small></th><th>纸箱成本</th><th>库存 <small>0=不限</small></th><th></th></tr></thead><tbody id="boxes-body"></tbody></table></div>
+        </section>
+        <section class="settings-panel optimizer-settings"><div><div class="section-kicker">优化目标</div><h2>运费、箱数与目标重量</h2><p>选择主要目标；纸箱成本和运费单价为空时只比较箱数与计费重量。</p></div><div class="settings-grid"><label>货件名称<input id="shipment-name" type="text" placeholder="例如：德国 10月22日"></label><label>优化目标<select id="objective"><option value="balanced">综合平衡</option><option value="noThrow">优先不抛</option><option value="minCartons">最少箱数</option><option value="minChargeable">最低计费重</option><option value="minCost">最低预计成本</option></select></label><label>体积重系数<input id="divisor" type="number" min="1" step="1"></label><label>运费单价 / kg<input id="freight-rate" type="number" min="0" step="any"></label><label>目标毛重下限<input id="target-min" type="number" min="0" step="any"></label><label>目标毛重上限<input id="target-max" type="number" min="0" step="any"></label></div><button type="button" id="calculate" class="button primary">生成混箱方案 <span>→</span></button></section>
+        <div id="messages" class="messages" role="alert" hidden></div>
+        <section id="results" class="results" aria-labelledby="results-heading" hidden>
+          <div class="results-heading"><div><div class="section-kicker">STEP 03 · PACKING PLAN</div><h2 id="results-heading">推荐装箱方案</h2><p>结果按当前输入与优化目标计算，可用于现场装箱和反馈校准。</p></div><div class="head-actions"><button type="button" id="save-shipment" class="button ghost">保存本票</button><button type="button" id="download-csv" class="button outline">导出 CSV</button><button type="button" id="download-excel" class="button outline">导出 Excel</button><button type="button" id="print-operations" class="button primary">打印操作单 / 标签</button></div></div>
+          <div class="metrics"><div class="metric"><span>建议箱数</span><strong id="m-cartons">—</strong><small>箱</small></div><div class="metric"><span>合计实重</span><strong id="m-gross">—</strong><small>kg（含空箱）</small></div><div class="metric"><span>计费重量</span><strong id="m-billable">—</strong><small>kg</small></div><div class="metric accent"><span>抛重差额</span><strong id="m-excess">—</strong><small id="m-excess-note">kg</small></div><div class="metric"><span>预计总成本</span><strong id="m-cost">—</strong><small>纸箱 + 运费</small></div></div>
+          <div id="result-note" class="result-note"></div>
+          <section id="packing-preview" class="panel packing-preview" aria-labelledby="packing-preview-title"><div class="packing-preview-head"><div><div class="section-kicker">3D PACKING</div><h3 id="packing-preview-title">3D 装箱预览</h3><p>选择箱号，播放产品逐件入箱的 3D 动画。</p></div><div class="packing-preview-actions"><label for="preview-carton">选择箱号</label><select id="preview-carton" aria-label="选择预览箱号"></select><button type="button" id="preview-play" class="button primary">▶ 播放装箱动画</button><button type="button" id="preview-open" class="button outline">放大查看 3D →</button></div></div><div class="packing-preview-stage"><canvas id="preview-canvas" aria-label="当前箱子的三维装箱预览"></canvas><div class="packing-preview-hint">点击预览图可放大旋转 · 外框是可用内尺寸</div></div><div id="preview-legend" class="packing-preview-legend" aria-label="当前箱产品颜色图例"></div><div class="packing-preview-guide"><p><strong>怎么用：</strong>选择箱号并播放；放大后可暂停、重播、逐件切换、拖动进度和调速。</p><p id="preview-coverage" aria-live="polite"></p><p>刚性产品离开箱底时，算法要求至少 80% 底面受支撑，且底面中心有支撑；实际入箱路径和承重仍需实物确认。</p></div></section>
+          <div class="panel result-panel"><div class="panel-head compact"><div><h3>逐箱明细</h3><p>在上方选择箱号播放装箱动画；展开箱号可查看 SKU 配比。</p></div></div><div id="carton-list" class="carton-list"></div></div>
+          <div class="panel result-panel"><div class="panel-head compact"><div><h3>装箱矩阵</h3><p>参考装箱单格式：产品为行，箱号为列，单元格为件数。</p></div></div><div class="table-scroll"><table id="matrix" class="matrix-table"></table></div></div>
+          <div class="panel result-panel operations-panel"><div class="panel-head compact"><div><h3>现场装箱执行</h3><p>逐箱勾选完成并填写实测毛重；记录保存在当前浏览器。</p></div></div><div id="operations-list" class="operations-list"></div></div>
+          <div class="panel result-panel feedback-panel"><div class="panel-head compact"><div><h3>实装反馈与校准</h3><p>记录装不下、偏紧或空隙较大；可将校准系数应用到相关 SKU 后重新计算。</p></div></div><div class="feedback-form"><label>箱号<select id="feedback-carton"></select></label><label>结果<select id="feedback-status"><option value="ok">正常</option><option value="tight">偏紧</option><option value="fail">装不下</option><option value="roomy">空隙较大</option></select></label><label>校准 SKU<select id="feedback-sku"><option value="*">本箱全部 SKU</option></select></label><label>实测毛重 kg<input id="feedback-gross" type="number" min="0" step="any"></label><label class="feedback-note">备注<input id="feedback-note" type="text" placeholder="例如：包装鼓起、需改方向"></label><button type="button" id="save-feedback" class="button primary">保存反馈并应用校准</button></div><div id="feedback-history" class="feedback-history"></div></div>
+          <div class="panel result-panel"><div class="panel-head compact"><div><h3>历史货件</h3><p>保存当前货件参数和结果，之后可恢复并重新计算。</p></div></div><div id="shipment-history" class="shipment-history"></div></div>
+          <div id="print-area" class="print-area"></div>
+        </section>
+        <footer>BOXWISE · 混箱配货规划器 <span>算法结果供备货参考，请以实物试装及货代计费规则复核。</span></footer>
+      </div>
+    </main>
+  </div>
+  <dialog id="paste-dialog"><form method="dialog" class="dialog-content"><div class="dialog-head"><h2>批量粘贴产品</h2><button value="cancel" aria-label="关闭">×</button></div><p>从 Excel 复制以下列：SKU、产品名称、长、宽、高、单件重、数量；可选第 8 列为装箱体积比例（%）。支持制表符或逗号分隔，不需要表头。</p><textarea id="paste-text" placeholder="SKU001&#9;产品 A&#9;20&#9;15&#9;8&#9;0.6&#9;30&#9;100"></textarea><div class="dialog-actions"><button value="cancel" class="button ghost">取消</button><button id="apply-paste" type="button" class="button primary">导入产品</button></div></form></dialog>
+  <dialog id="rule-dialog"><form method="dialog" class="dialog-content rule-dialog-content"><div class="dialog-head"><h2>产品装箱规则</h2><button value="cancel" aria-label="关闭">×</button></div><p id="rule-product-name"></p><div class="rule-grid"><label>摆放方向<select id="rule-orientation"><option value="any">允许任意旋转</option><option value="upright">保持高度方向</option><option value="fixed">固定方向</option></select></label><label>尺寸校准系数 %<input id="rule-size-factor" type="number" min="80" max="130" step="0.5"></label><label>最高摆放层<input id="rule-max-layers" type="number" min="1" step="1"></label><label>最大承重 kg<input id="rule-max-load" type="number" min="0" step="any"></label><label class="rule-check"><input id="rule-fragile" type="checkbox"> 易碎品，不允许上方放货</label><label class="rule-check"><input id="rule-support" type="checkbox"> 可以承托其他产品</label></div><div class="dialog-actions"><button value="cancel" class="button ghost">取消</button><button id="save-rule" type="button" class="button primary">保存规则</button></div></form></dialog>
+  <dialog id="viewer-dialog" class="viewer-dialog" aria-labelledby="viewer-title">
+    <div class="viewer-shell">
+      <div class="viewer-head"><div><div class="section-kicker">3D PACKING VIEW</div><h2 id="viewer-title">箱内装箱视图</h2><p id="viewer-subtitle"></p></div><button type="button" id="viewer-close" class="viewer-close" aria-label="关闭 3D 装箱视图">×</button></div>
+      <div class="viewer-toolbar"><span>拖动旋转 · 滚轮缩放 · 点击产品查看详情</span><div class="viewer-controls"><label for="viewer-height">显示高度 <strong id="viewer-height-value"></strong></label><input id="viewer-height" type="range" min="0" max="100" value="100" aria-label="显示高度"><button type="button" id="viewer-zoom-out" aria-label="缩小">−</button><button type="button" id="viewer-zoom-in" aria-label="放大">＋</button><button type="button" id="viewer-reset">重置视角</button></div></div>
+      <div class="viewer-playback"><button type="button" id="viewer-play" class="viewer-play-primary">▶ 播放装箱</button><button type="button" id="viewer-replay" class="viewer-play-secondary">↺ 从头重播</button><button type="button" id="viewer-prev" class="viewer-play-secondary" aria-label="上一件">←</button><label class="viewer-playback-progress" for="viewer-progress"><span id="viewer-progress-count">0 / 0 件</span><input id="viewer-progress" type="range" min="0" max="1" step="any" value="0" aria-label="装箱动画进度"></label><button type="button" id="viewer-next" class="viewer-play-secondary" aria-label="下一件">→</button><label class="viewer-speed" for="viewer-speed">速度 <select id="viewer-speed" aria-label="装箱动画速度"><option value="1000">慢速</option><option value="650" selected>正常</option><option value="350">快速</option></select></label><span id="viewer-play-status" class="viewer-play-status" role="status">按播放查看逐件装箱过程</span></div>
+      <div class="viewer-layout"><div class="viewer-stage"><canvas id="viewer-canvas" aria-label="可旋转的箱内三维摆放图"></canvas><div class="viewer-stage-hint">外框表示可用内尺寸；产品按尺寸比例绘制</div></div><aside class="viewer-aside"><div class="viewer-aside-label">已选产品</div><div id="viewer-selected" class="viewer-selected">点击图中的产品，查看 SKU、方向与坐标。</div><div class="viewer-aside-label">本箱 SKU</div><div id="viewer-legend" class="viewer-legend"></div><div id="viewer-soft-note" class="viewer-soft-note" hidden></div><p class="viewer-caution">刚性产品已按至少 80% 底面支撑和中心受支撑进行规划；承重、缓冲材料、实际入箱路径和内尺寸须试装复核。</p></aside></div>
+    </div>
+  </dialog>
+  <script defer src="./viewer.js"></script>
+  <script defer src="./app.js"></script>
+</body>
+</html>
